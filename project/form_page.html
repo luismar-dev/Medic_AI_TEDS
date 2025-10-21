@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="general.css" />
+    <title>Medic-AI - Crear Cuenta</title>
+  </head>
+
+  <body>
+    <div class="container">
+      <img
+        src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/nombre_Medic_AI.png"
+        alt="Medic-AI"
+        class="logo-title"
+      />
+      <div class="form-section">
+        <div class="form-group">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" placeholder="Ingresa tu nombre" />
+          <span class="error-msg" id="error-nombre"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Correo electrónico</label>
+          <input type="email" id="email" placeholder="correo@ejemplo.com" />
+          <span class="error-msg" id="error-email"></span>
+        </div>
+
+        <div class="row-group">
+          <div class="form-group">
+            <label for="edad">Edad</label>
+            <input
+              type="number"
+              id="edad"
+              placeholder="Edad"
+              min="18"
+              max="120"
+            />
+            <span class="error-msg" id="error-edad"></span>
+          </div>
+          <div class="form-group">
+            <label for="sexo">Sexo</label>
+            <select id="sexo">
+              <option value="" disabled selected>Selecciona</option>
+              <option value="masculino">Masculino</option>
+              <option value="femenino">Femenino</option>
+              <option value="otro">Otro</option>
+            </select>
+            <span class="error-msg" id="error-sexo"></span>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="enfermedades">Enfermedades crónicas</label>
+          <select id="enfermedades">
+            <option value="" disabled selected>Selecciona</option>
+            <option value="ninguna">Ninguna</option>
+            <option value="diabetes">Diabetes</option>
+            <option value="hipertension">Hipertensión</option>
+            <option value="asma">Asma</option>
+            <option value="artritis">Artritis</option>
+            <option value="epoc">EPOC</option>
+            <option value="cancer">Cáncer</option>
+            <option value="alzheimer">Alzheimer</option>
+            <option value="parkinson">Parkinson</option>
+            <option value="insuficiencia_renal">Insuficiencia renal</option>
+            <option value="cardiopatia">Cardiopatía</option>
+            <option value="colesterol_alto">Colesterol alto</option>
+            <option value="obesidad">Obesidad</option>
+            <option value="otros">Otros</option>
+          </select>
+          <span class="error-msg" id="error-enfermedades"></span>
+        </div>
+
+        <div class="form-group">
+          <label for="habitos">Hábitos</label>
+          <select id="habitos">
+            <option value="" selected>Selecciona (opcional)</option>
+            <option value="deporte">Deporte</option>
+            <option value="fumar">Fumar</option>
+            <option value="alcohol">Alcohol</option>
+            <option value="dieta_saludable">Dieta saludable</option>
+            <option value="sedentarismo">Sedentarismo</option>
+            <option value="dormir_poco">Dormir poco</option>
+            <option value="estres">Estrés frecuente</option>
+            <option value="meditacion">Meditación</option>
+            <option value="comida_rapida">Comida rápida</option>
+            <option value="hidratarse_bien">Hidratación adecuada</option>
+            <option value="uso_medicamentos">
+              Uso frecuente de medicamentos
+            </option>
+            <option value="consumo_cafeina">Consumo alto de cafeína</option>
+            <option value="trabajo_excesivo">Trabajo excesivo</option>
+            <option value="otros">Otros</option>
+          </select>
+          <span class="error-msg" id="error-habitos"></span>
+        </div>
+      </div>
+
+      <div class="right-section">
+        <h2 class="heading-right">Crear cuenta nueva</h2>
+        <div class="circulo">
+          <img
+            class="logo-image"
+            src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/logo_Medic_AI.png"
+            alt="Ícono de salud"
+          />
+        </div>
+        <div class="divider"></div>
+        <div class="register-btn">
+          <button type="button">Confirmar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="emailModal" class="modal" aria-hidden="true">
+      <div
+        class="modal-content fixed-popup"
+        role="dialog"
+        aria-modal="true"
+        id="modalContent"
+      >
+        <div class="modal-icon" id="modalIcon">✉️</div>
+        <h2 id="modalTitle">¡Correo enviado!</h2>
+        <p id="modalMessage">
+          Se ha enviado un correo de verificación a
+          <strong id="emailDisplay"></strong>
+        </p>
+        <p style="color: #999; font-size: 12px" id="modalSubMessage">
+          Por favor revisa tu bandeja de entrada o carpeta de spam.
+        </p>
+        <div class="modal-buttons" id="modalButtons">
+          <button class="btn-resend" id="resendBtn">Reenviar correo</button>
+          <button class="close-modal" id="closeModalBtn" aria-label="Cerrar">
+            ×
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const forbiddenWords = [
+        "puta",
+        "cabron",
+        "mierda",
+        "gilipollas",
+        "coño",
+        "joder",
+        "pendejo",
+        "culero",
+        "chingar",
+        "imbecil",
+        "idiota",
+        "tonto",
+        "estupido",
+        "pito",
+        "puñetas",
+        "puto",
+        "cabrona",
+        "tonta",
+        "estupida",
+        "estúpido",
+        "estúpida",
+        "majadero",
+        "retrasado",
+        "culo",
+        "verga",
+      ];
+
+      function containsForbiddenWord(text) {
+        const lowerText = text.toLowerCase();
+        return forbiddenWords.some((word) => lowerText.includes(word));
+      }
+
+      const fields = [
+        {
+          input: document.getElementById("nombre"),
+          error: document.getElementById("error-nombre"),
+        },
+        {
+          input: document.getElementById("email"),
+          error: document.getElementById("error-email"),
+        },
+        {
+          input: document.getElementById("edad"),
+          error: document.getElementById("error-edad"),
+        },
+        {
+          input: document.getElementById("sexo"),
+          error: document.getElementById("error-sexo"),
+        },
+        {
+          input: document.getElementById("enfermedades"),
+          error: document.getElementById("error-enfermedades"),
+        },
+        {
+          input: document.getElementById("habitos"),
+          error: document.getElementById("error-habitos"),
+        },
+      ];
+
+      let touchedFields = {};
+      fields.forEach((f) => {
+        touchedFields[f.input.id] = false;
+        f.input.addEventListener(
+          "focus",
+          () => (touchedFields[f.input.id] = true)
+        );
+        f.input.addEventListener(
+          "blur",
+          () => touchedFields[f.input.id] && validateField(f)
+        );
+      });
+
+      function validateField(fieldObj) {
+        const val = fieldObj.input.value.trim();
+        const errorElement = fieldObj.error;
+
+        if (fieldObj.input.id === "edad") return validateEdad();
+
+        // Campo vacío
+        if (val === "") {
+          // El campo "habitos" puede quedar vacío
+          if (fieldObj.input.id !== "habitos") {
+            errorElement.textContent = "Este campo es obligatorio";
+            errorElement.style.opacity = "1";
+            return false;
+          } else {
+            errorElement.style.opacity = "0";
+            return true;
+          }
+        }
+
+        // Palabras prohibidas
+        if (
+          fieldObj.input.id === "nombre" ||
+          fieldObj.input.id === "habitos" ||
+          fieldObj.input.id === "enfermedades"
+        ) {
+          if (containsForbiddenWord(val)) {
+            errorElement.textContent =
+              "Algunas palabras no son adecuadas. Coriige tu texto antes de continuar.";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+        }
+
+        // Validar nombre
+        if (fieldObj.input.id === "nombre") {
+          const nombreRegex =
+            /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü]+(?: [A-Za-zÁÉÍÓÚáéíóúÑñÜü]+)*$/;
+          if (!nombreRegex.test(val)) {
+            errorElement.textContent =
+              "Formato no válido (ejemplo: Juan Perez).";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+        }
+
+        // Validar correo
+        if (fieldObj.input.id === "email") {
+          const allowedDomains = [
+            "gmail.com",
+            "hotmail.com",
+            "yahoo.com",
+            "outlook.com",
+            "uabc.edu.mx",
+            "gmail.com.mx",
+            "yahoo.com.mx",
+            "hotmail.com.mx",
+          ];
+          const parts = val.trim().split("@");
+
+          if (parts.length !== 2) {
+            errorElement.textContent = "Correo no válido (ejemplo@gmail.com).";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+
+          const local = parts[0];
+          const domain = parts[1].toLowerCase();
+
+          if (
+            domain.startsWith(".") ||
+            domain.endsWith(".") ||
+            domain.includes("..")
+          ) {
+            errorElement.textContent = "Dominio no válido.";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+
+          if (!allowedDomains.includes(domain)) {
+            errorElement.textContent =
+              "Solo se permiten dominios conocidos (gmail.com, hotmail.com, yahoo.com, outlook.com).";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+
+          const localRegex = /^[a-zA-Z0-9._%+\-ñÑ]+$/;
+          if (!localRegex.test(local)) {
+            errorElement.textContent = "Correo no válido (ejemplo@gmail.com).";
+            errorElement.style.opacity = "1";
+            return false;
+          }
+
+          errorElement.style.opacity = "0";
+          return true;
+        }
+
+        errorElement.style.opacity = "0";
+        return true;
+      }
+
+      const edadInput = document.getElementById("edad");
+      const errorEdad = document.getElementById("error-edad");
+
+      edadInput.addEventListener("input", () => {
+        edadInput.value = edadInput.value.replace(/[^0-9]/g, "");
+      });
+
+      function validateEdad() {
+        const valor = edadInput.value.trim();
+        if (valor === "") {
+          errorEdad.textContent = "Este campo es obligatorio";
+          errorEdad.style.opacity = "1";
+          return false;
+        }
+        const numero = parseInt(valor, 10);
+        if (isNaN(numero) || numero < 18 || numero > 120) {
+          errorEdad.textContent = "Edad fuera del rango (18-120)";
+          errorEdad.style.opacity = "1";
+          return false;
+        }
+        errorEdad.style.opacity = "0";
+        return true;
+      }
+
+      function makeEditable(selectId, allowNumbers = false) {
+        const select = document.getElementById(selectId);
+        select.addEventListener("change", () => {
+          if (select.value === "otros") {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.id = selectId;
+            input.placeholder = "Especifica otro";
+            input.className = select.className;
+            input.style.padding = "20px";
+            input.style.fontSize = "18px";
+            input.style.borderRadius = "15px";
+            input.style.border = "none";
+            input.style.width = "100%";
+
+            input.addEventListener("input", () => {
+              if (allowNumbers) {
+                input.value = input.value.replace(
+                  /[^a-zA-ZÁÉÍÓÚáéíóúÑñ0-9 ]/g,
+                  ""
+                );
+              } else {
+                input.value = input.value.replace(
+                  /[^a-zA-ZÁÉÍÓÚáéíóúÑñ ]/g,
+                  ""
+                );
+              }
+              if (containsForbiddenWord(input.value)) {
+                input.value = "";
+                alert("Palabra no permitida");
+              }
+            });
+
+            select.replaceWith(input);
+
+            const restoreSelect = () => {
+              input.replaceWith(select);
+              select.value = "";
+            };
+
+            input.addEventListener("keydown", (e) => {
+              if (e.key === "Escape") restoreSelect();
+            });
+
+            input.addEventListener("blur", () => {
+              if (input.value.trim() === "") restoreSelect();
+            });
+
+            input.focus();
+          }
+        });
+      }
+
+      makeEditable("habitos");
+      makeEditable("enfermedades", true);
+
+      // Script para enviar correo con EmailJS
+
+      const API_URL = "http://127.0.0.1:5000/api";
+
+      async function guardarEnBaseDatos(datos) {
+        try {
+          const response = await fetch(`${API_URL}/registrar-usuario`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(datos),
+          });
+
+          const resultado = await response.json();
+
+          if (!response.ok) {
+            throw new Error(
+              resultado.error || "Error al guardar en la base de datos"
+            );
+          }
+
+          return resultado;
+        } catch (error) {
+          console.error("Error al guardar en BD:", error);
+          throw error;
+        }
+      }
+
+      async function verificarEmailExistente(email) {
+        try {
+          const response = await fetch(`${API_URL}/verificar-email`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ email }),
+          });
+
+          const resultado = await response.json();
+          return resultado.existe;
+        } catch (error) {
+          console.error("Error al verificar email:", error);
+          return false;
+        }
+      }
+
+      async function testConexionBackend() {
+        try {
+          const response = await fetch("http://127.0.0.1:5000/health");
+          const data = await response.json();
+          console.log("✅ Conexión con backend:", data.message);
+          return true;
+        } catch (error) {
+          console.error("❌ No se pudo conectar con el backend:", error);
+          console.error(
+            "Asegúrate de que el servidor Flask esté corriendo en http://127.0.0.1:5000"
+          );
+          return false;
+        }
+      }
+
+      window.addEventListener("load", async () => {
+        await testConexionBackend();
+      });
+
+      // Script para enviar correo con EmailJS
+      function onReady(fn) {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", fn);
+        } else {
+          fn();
+        }
+      }
+
+      onReady(() => {
+        const EMAILJS_SOURCES = [
+          "https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js",
+          "https://cdn.emailjs.com/dist/email.min.js",
+        ];
+
+        function loadScript(src) {
+          return new Promise((resolve, reject) => {
+            if (document.querySelector(`script[src="${src}"]`)) {
+              return setTimeout(resolve, 20);
+            }
+            const s = document.createElement("script");
+            s.src = src;
+            s.async = true;
+            s.onload = () => resolve();
+            s.onerror = () => reject(new Error("Error cargando " + src));
+            document.head.appendChild(s);
+          });
+        }
+
+        async function ensureEmailJs() {
+          if (window.emailjs) return;
+          let lastError = null;
+          for (const src of EMAILJS_SOURCES) {
+            try {
+              await loadScript(src);
+              if (window.emailjs) return;
+            } catch (err) {
+              lastError = err;
+            }
+          }
+          throw lastError || new Error("No se pudo cargar EmailJS");
+        }
+
+        // elementos UI
+        const confirmBtn = document.querySelector(".register-btn button");
+        const modal = document.getElementById("emailModal");
+        const modalContent = document.getElementById("modalContent");
+        const modalIcon = document.getElementById("modalIcon");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalMessage = document.getElementById("modalMessage");
+        const modalSubMessage = document.getElementById("modalSubMessage");
+        const emailDisplay = document.getElementById("emailDisplay");
+        const resendBtn = document.getElementById("resendBtn");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+        const emailModal = document.getElementById("emailModal");
+
+        closeModalBtn.addEventListener("click", () => {
+          emailModal.style.display = "none";
+          emailModal.setAttribute("aria-hidden", "true");
+          updateModalContent(
+            "sent",
+            document.getElementById("email").value.trim()
+          );
+        });
+
+        function updateModalContent(type, email = "") {
+          modalContent.classList.remove("modal-error", "modal-resend");
+
+          switch (type) {
+            case "sent":
+              modalIcon.textContent = "✉️";
+              modalTitle.textContent = "¡Correo enviado!";
+              modalMessage.innerHTML = `Se ha enviado un correo de verificación a <strong>${email}</strong>`;
+              modalSubMessage.textContent =
+                "Por favor revisa tu bandeja de entrada o carpeta de spam.";
+              resendBtn.style.display = "inline-block";
+              break;
+
+            case "resent":
+              modalContent.classList.add("modal-resend");
+              modalIcon.textContent = "✅";
+              modalTitle.textContent = "¡Correo reenviado!";
+              modalMessage.innerHTML = `El correo de verificación se ha reenviado a <strong>${email}</strong>.`;
+              modalSubMessage.textContent =
+                "Revisa tu bandeja de entrada o carpeta de spam.";
+              resendBtn.style.display = "inline-block";
+              break;
+
+            case "error":
+              modalContent.classList.add("modal-error");
+              modalIcon.textContent = "❌";
+              modalTitle.textContent = "¡Error al enviar!";
+              modalMessage.innerHTML = `No se pudo enviar el correo de verificación a <strong>${
+                email || "el correo especificado"
+              }</strong>.`;
+              modalSubMessage.textContent =
+                "Por favor, inténtalo de nuevo o verifica tu conexión a internet.";
+              resendBtn.style.display = "inline-block";
+              break;
+          }
+
+          if (emailDisplay) emailDisplay.textContent = email;
+        }
+
+        function showModal(type, email) {
+          updateModalContent(type, email);
+          modal.style.display = "flex";
+          modal.setAttribute("aria-hidden", "false");
+        }
+
+        function hideModal() {
+          modal.style.display = "none";
+          modal.setAttribute("aria-hidden", "true");
+        }
+
+        function validateAll() {
+          let ok = true;
+          fields.forEach((f) => {
+            const r = validateField(f);
+            if (!r) ok = false;
+          });
+          if (!validateEdad()) ok = false;
+          return ok;
+        }
+
+        async function sendVerificationEmail(datos) {
+          const SERVICE_ID = "service_27mhvns";
+          const TEMPLATE_ID = "template_kqwugi6";
+
+          const currentUrl = new URL(window.location.href);
+          const pathParts = currentUrl.pathname.split("/");
+
+          // Reemplazar el último segmento (nombre del archivo) con register_pass.html
+          pathParts[pathParts.length - 1] = "register_pass.html";
+
+          // Reconstruir la ruta completa
+          currentUrl.pathname = pathParts.join("/");
+
+          const timestamp = Math.floor(Date.now() / 1000);
+
+          // Añadir todos los datos como parámetros de búsqueda
+          const params = new URLSearchParams({
+            nombre: datos.nombre,
+            email: datos.email,
+            edad: datos.edad,
+            sexo: datos.sexo,
+            enfermedades: datos.enfermedades,
+            habitos: datos.habitos,
+            timestamp: timestamp,
+          });
+
+          const verificationUrl = `${currentUrl.origin}${
+            currentUrl.pathname
+          }?${params.toString()}`;
+
+          console.log("URL de verificación generada:", verificationUrl);
+
+          const templateParams = {
+            to_email: datos.email,
+            to_name: datos.nombre,
+            confirm_link: verificationUrl,
+          };
+
+          return emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        }
+
+        // Inicializacion
+        (async () => {
+          try {
+            await ensureEmailJs();
+          } catch (err) {
+            console.error("Error cargando EmailJS:", err);
+            alert(
+              "No se pudo cargar la librería de EmailJS. Revisa la conexión o el CDN."
+            );
+            return;
+          }
+
+          try {
+            emailjs.init("uc4SrYHL4-aHsURoV");
+          } catch (err) {
+            console.warn(
+              "emailjs.init falló (posible versión antigua), intentamos continuar.",
+              err
+            );
+          }
+
+          if (!confirmBtn) {
+            console.warn("No se encontró el botón Confirmar.");
+            return;
+          }
+
+          confirmBtn.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+
+            const emailInput = document.getElementById("email");
+            const nombreInput = document.getElementById("nombre");
+            const edadInput = document.getElementById("edad");
+            const sexoInput = document.getElementById("sexo");
+            const enfermedadesInput = document.getElementById("enfermedades");
+            const habitosInput = document.getElementById("habitos");
+
+            const email = emailInput.value.trim();
+            const nombre = nombreInput.value.trim();
+            const edad = edadInput.value.trim();
+            const sexo = sexoInput.value;
+            const enfermedades = enfermedadesInput.value.trim();
+            const habitos = habitosInput.value.trim();
+
+            // Validaciones
+            if (!validateAll()) {
+              alert(
+                "Por favor corrige los campos marcados antes de continuar."
+              );
+              return;
+            }
+
+            if (!email || !nombre) {
+              alert("Por favor, completa nombre y correo.");
+              return;
+            }
+
+            // Verificar si el email ya existe
+            console.log("Verificando si el email existe...");
+            const emailExiste = await verificarEmailExistente(email);
+            if (emailExiste) {
+              const errorEmail = document.getElementById("error-email");
+              errorEmail.textContent =
+                "Este correo electrónico ya está registrado.";
+              errorEmail.style.opacity = "1";
+              confirmBtn.disabled = false;
+              return;
+            }
+
+            confirmBtn.disabled = true;
+
+            // Recolectar todos los datos del formulario
+            const datosUsuario = {
+              nombre: document.getElementById("nombre").value.trim(),
+              email: document.getElementById("email").value.trim(),
+              edad: document.getElementById("edad").value.trim(),
+              sexo: document.getElementById("sexo").value,
+              enfermedades: document
+                .getElementById("enfermedades")
+                .value.trim(),
+              habitos: document.getElementById("habitos").value.trim(),
+            };
+
+            try {
+              // Verificar si el email ya existe antes de enviar el correo
+              const emailExiste = await verificarEmailExistente(
+                datosUsuario.email
+              );
+              if (emailExiste) {
+                const errorEmail = document.getElementById("error-email");
+                errorEmail.textContent =
+                  "Este correo electrónico ya está registrado.";
+                errorEmail.style.opacity = "1";
+                return;
+              }
+
+              console.log(" Enviando correo de verificación...");
+              await sendVerificationEmail(datosUsuario);
+              console.log(" Correo de verificación enviado");
+
+              showModal("sent", datosUsuario.email);
+            } catch (err) {
+              console.error("❌ Error en el proceso:", err);
+              showModal("error", datosUsuario.email);
+            } finally {
+              confirmBtn.disabled = false;
+              confirmBtn.textContent = originalText;
+            }
+          });
+
+          // Reenviar correo
+          resendBtn.addEventListener("click", async () => {
+            const email = document.getElementById("email").value.trim();
+            const nombre = document.getElementById("nombre").value.trim();
+            if (!email || !nombre) {
+              alert("Faltan nombre o correo para reenviar.");
+              return;
+            }
+
+            resendBtn.disabled = true;
+
+            try {
+              await sendVerificationEmail(email, nombre);
+              updateModalContent("resent", email);
+            } catch (err) {
+              console.error("Error al reenviar:", err);
+              updateModalContent("error", email);
+            } finally {
+              resendBtn.disabled = false;
+            }
+          });
+        })();
+      });
+    </script>
+  </body>
+</html>

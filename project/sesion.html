@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Iniciar Sesión - Medic-AI</title>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    />
+    <link rel="stylesheet" href="sesion.css" />
+  </head>
+
+  <body>
+    <div class="sidebar-container">
+      <div class="sidebar">
+        <img
+          src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/logo_Medic_AI.png"
+          alt="Imagen 1"
+          class="image1"
+        />
+        <img
+          src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/nombre_Medic_AI.png"
+          alt="Imagen 2"
+          class="image2"
+        />
+      </div>
+    </div>
+
+    <div class="login-form">
+      <h2>Iniciar sesión</h2>
+      <form id="loginForm">
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" name="email" class="input-field" />
+        <div id="emailError" class="error-msg"></div>
+
+        <label for="password">Contraseña</label>
+        <div class="password-container">
+          <input
+            type="password"
+            id="password"
+            name="password"
+            class="input-field"
+          />
+          <span class="toggle-password" onclick="togglePasswordVisibility()">
+            <i class="fas fa-eye-slash" id="toggleIcon"></i>
+          </span>
+        </div>
+        <div id="passwordError" class="error-msg"></div>
+
+        <div class="buttons-container">
+          <button type="submit" class="btn primary-btn">Comenzar</button>
+          <div class="button-divider"></div>
+          <button type="button" id="createAccountBtn" class="btn secondary-btn">
+            Crear cuenta nueva
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <script>
+      function togglePasswordVisibility() {
+        const passwordField = document.getElementById("password");
+        const toggleIcon = document.getElementById("toggleIcon");
+        if (passwordField.type === "password") {
+          passwordField.type = "text";
+          toggleIcon.classList.replace("fa-eye-slash", "fa-eye");
+        } else {
+          passwordField.type = "password";
+          toggleIcon.classList.replace("fa-eye", "fa-eye-slash");
+        }
+      }
+
+      function showFieldError(fieldId, message) {
+        const errorDiv = document.getElementById(fieldId + "Error");
+        errorDiv.textContent = message || "";
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const loginForm = document.getElementById("loginForm");
+
+        loginForm.addEventListener("submit", async function (event) {
+          event.preventDefault();
+          showFieldError("email", "");
+          showFieldError("password", "");
+
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value.trim();
+
+          let hasError = false;
+
+          if (!email) {
+            showFieldError(
+              "email",
+              "Debes ingresar tu correo electrónico para continuar."
+            );
+            hasError = true;
+          }
+          if (!password) {
+            showFieldError(
+              "password",
+              "Debes ingresar tu contraseña antes de continuar."
+            );
+            hasError = true;
+          }
+
+          if (hasError) return;
+
+          try {
+            const response = await fetch("http://127.0.0.1:5000/api/login", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, password }),
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+              localStorage.setItem("currentUserEmail", email);
+              const messageDiv = document.getElementById("passwordError");
+              messageDiv.className = "success-msg";
+              messageDiv.textContent =
+                "¡Inicio de sesión exitoso! Redirigiendo...";
+
+              setTimeout(() => {
+                window.location.href = "inicio.html";
+              }, 2000);
+            } else {
+              showFieldError(
+                "password",
+                "Correo o contraseña incorrectas. Intente de nuevo."
+              );
+            }
+          } catch (error) {
+            showFieldError("password", "Error de conexión al servidor");
+          }
+        });
+
+        document
+          .getElementById("createAccountBtn")
+          .addEventListener("click", function () {
+            window.location.href = "form_page.html";
+          });
+      });
+    </script>
+  </body>
+</html>

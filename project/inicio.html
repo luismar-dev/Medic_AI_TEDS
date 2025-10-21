@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pantalla de Inicio</title>
+    <link rel="stylesheet" href="inicio.css" />
+  </head>
+
+  <body>
+    <div class="overlay" id="overlay">
+      <div class="anuncio">
+        <div class="header_aviso">
+          <img
+            class="aviso_image"
+            src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/modal_aviso_img.png"
+            alt="aviso_img"
+          />
+          <h2>Aviso Importante</h2>
+        </div>
+
+        <p id="mensajeAnuncio">
+          Este sistema solo atiende consultas relacionadas con infecciones
+          respiratorias agudas.
+        </p>
+        <button class="btn-aceptar" onclick="cerrarAnuncio()">
+          Entendido y continuar
+        </button>
+      </div>
+    </div>
+    <div class="main-container">
+      <div class="logo-title">
+        <img
+          class="logo-image"
+          src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/logo_Medic_AI.png"
+          alt="Ícono de salud"
+        />
+        <img
+          src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/nombre_Medic_AI.png"
+          alt="Medic-AI"
+        />
+      </div>
+
+      <div class="sidebar"></div>
+
+      <div class="content-box"></div>
+      <div class="cuadro-perfil">
+        <div class="user-profile">
+          <img src="" alt="Avatar de usuario" />
+          <span>nombre</span>
+        </div>
+      </div>
+      <div class="prompt">
+        <input type="text" id="texto" placeholder="Describe tus sintomas" />
+        <button class="send-btn" id="btnEnviar" aria-label="Enviar">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 19V5M12 5L5 12M12 5L19 12"
+              stroke="#000000"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </button>
+      </div>
+      <div class="error-message" id="errorMessage"></div>
+    </div>
+  </body>
+
+  <script>
+    function cerrarAnuncio() {
+      const overlay = document.getElementById("overlay");
+      overlay.classList.add("hidden");
+    }
+
+    function mostrarAnuncio(mensaje) {
+      const overlay = document.getElementById("overlay");
+      const mensajeAnuncio = document.getElementById("mensajeAnuncio");
+
+      // Cambiar el mensaje si se proporciona uno
+      if (mensaje) {
+        mensajeAnuncio.textContent = mensaje;
+      }
+
+      // Mostrar el overlay
+      overlay.classList.remove("hidden");
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const userEmail = localStorage.getItem("currentUserEmail");
+
+      if (!userEmail) {
+        console.error("No hay un usuario logueado.");
+        // Agregar para forzar el login si no hay usuario
+        // window.location.href = 'sesion.html';
+        return;
+      }
+
+      try {
+        // Pedimos los datos del usuario al servidor
+        const response = await fetch(
+          "http://127.0.0.1:5000/api/get-user-data",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail }),
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          const nombreCompleto = data.nombre;
+          const partesNombre = nombreCompleto.split(" ");
+          const nombreMostrado = `${partesNombre[0]} ${
+            partesNombre[1] || ""
+          }`.trim();
+
+          const userNameElement = document.querySelector(".user-profile span");
+          const userAvatarElement = document.querySelector(".user-profile img");
+
+          if (userNameElement) {
+            userNameElement.textContent = nombreMostrado;
+          }
+
+          if (userAvatarElement) {
+            userAvatarElement.src = `https://ui-avatars.com/api/?name=${nombreMostrado}&background=A057D5&color=fff&size=40&rounded=true`;
+          }
+        } else {
+          console.error("Error al obtener los datos del usuario:", data.error);
+        }
+      } catch (error) {
+        console.error("Error de conexión al obtener datos del usuario:", error);
+      }
+    });
+  </script>
+
+  <script>
+    const sendButton = document.querySelector(".send-btn");
+    const messageInput = document.getElementById("texto");
+    const chatWindow = document.querySelector(".content-box");
+    const errorMessage = document.getElementById("errorMessage");
+
+    // Variables globales para controlar el estado del botón
+    let promptBloqueado = false;
+    let textoOriginalInvalido = "";
+
+    // Caracteres permitidos
+    const notAllowedCharsRegex = /[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ %!¡¿?\-_.,;()\s]/g;
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = "block";
+    }
+
+    function hideError() {
+      errorMessage.textContent = "";
+      errorMessage.style.display = "none";
+    }
+
+    messageInput.addEventListener("input", function () {
+      let filteredText = this.value.replace(notAllowedCharsRegex, "");
+
+      if (this.value !== filteredText) {
+        this.value = filteredText;
+      }
+
+      // Limita a 750 caracteres
+      if (this.value.length > 750) {
+        this.value = this.value.substring(0, 750);
+        showError("Has alcanzado el límite de 750 caracteres.");
+      } else {
+        hideError();
+      }
+
+      // Si el prompt estaba bloqueado y el texto cambió, habilitar botón
+      if (promptBloqueado) {
+        const textoActual = this.value.trim();
+
+        // Solo habilitar si el texto es diferente al inválido y no está vacío
+        if (textoActual !== textoOriginalInvalido && textoActual.length > 0) {
+          promptBloqueado = false;
+          sendButton.disabled = false;
+          sendButton.style.opacity = "1";
+          sendButton.style.cursor = "pointer";
+          hideError();
+        }
+      }
+    });
+
+    function displayChatMessage(text, type) {
+      const messageElement = document.createElement("div");
+      messageElement.classList.add("message", type);
+      messageElement.textContent = text;
+      chatWindow.appendChild(messageElement);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return messageElement;
+    }
+
+    async function sendMessage() {
+      const messageText = messageInput.value.trim();
+      const userEmail = localStorage.getItem("currentUserEmail");
+
+      // Validar que no esté vacío
+      if (!messageText || messageText.length === 0) {
+        showError("⚠️ Por favor, describe tus sintomas antes de enviar.");
+        return;
+      }
+
+      // Si el botón está bloqueado, no permitir envío
+      if (promptBloqueado) {
+        showError("⚠️ Debes modificar tu consulta antes de enviar.");
+        return;
+      }
+
+      hideError();
+      displayChatMessage(messageText, "sent");
+
+      // Guardar el texto antes de limpiar
+      const textoEnviado = messageText;
+      messageInput.value = "";
+
+      if (!userEmail) {
+        showError("No se ha podido identificar al usuario.");
+        return;
+      }
+
+      const loadingMessage = displayChatMessage(
+        "Evaluando y analizando síntomas...",
+        "received"
+      );
+
+      try {
+        const response = await fetch("http://127.0.0.1:5000/api/send-prompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sintomas: textoEnviado, email: userEmail }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "Error del servidor");
+        }
+
+        if (loadingMessage && loadingMessage.parentNode) {
+          loadingMessage.remove();
+        }
+
+        if (data.success && data.respuesta) {
+          // VERIFICAR SI ES PROMPT INVÁLIDO
+          if (data.prompt_invalido === true) {
+            // Bloquear el botón
+            promptBloqueado = true;
+            textoOriginalInvalido = textoEnviado;
+            sendButton.disabled = true;
+            sendButton.style.opacity = "0.5";
+            sendButton.style.cursor = "not-allowed";
+
+            // Mostrar error visible
+            showError(
+              "⚠️ Debes describir síntomas respiratorios. Modifica tu consulta."
+            );
+
+            // Mostrar el anuncio nuevamente
+            mostrarAnuncio(
+              "Este sistema solo atiende consultas relacionadas con infecciones respiratorias agudas. Por favor, describe síntomas respiratorios."
+            );
+          }
+
+          // Mostrar respuesta en el chat
+          displayChatMessage(data.respuesta, "received");
+        } else {
+          showError("No se recibió respuesta del servidor");
+        }
+      } catch (error) {
+        if (loadingMessage && loadingMessage.parentNode) {
+          loadingMessage.remove();
+        }
+        console.error("Error completo:", error);
+        showError(`Error: ${error.message}`);
+      }
+    }
+
+    sendButton.addEventListener("click", sendMessage);
+    messageInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</html>
