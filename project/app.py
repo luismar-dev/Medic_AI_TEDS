@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
+from concurrent.futures import ThreadPoolExecutor, TimeoutError
 from datetime import datetime
 import logging
 import hashlib
+import time
 import os
 import re
 from dotenv import load_dotenv
@@ -45,6 +47,9 @@ gemini_chat_history = model_gemini.start_chat(history=[])
 qwen_chat_history = []
 mistral_chat_history = []
 llama_chat_history = []
+
+#Variables Universales
+TIMEOUT_LIMIT = 5
 
 ''' ------------------------------------ '''
 
@@ -261,6 +266,68 @@ def extraer_numero_voto(texto):
             return num
     return None
 
+def insertar_respuesta(id_ia, respuesta, tiempo):
+    # Insertar relacion de sintomas con prompt a Tabla "DetallesPrompt "
+    engine = crear_engine_sqlserver('BD_Medic_AI')
+    with engine.connect() as conn:
+        # Obtener el IDPrompt
+        query = text(""" SELECT TOP 1 IDPrompt
+                                            FROM Prompts 
+                                            ORDER BY Fecha DESC
+                                        """)
+        resultado = conn.execute(query).fetchone()
+        id_prompt = resultado[0]
+
+        query = text("""
+                                        INSERT INTO Respuestas (IDPrompt, ID_IA, Respuesta, Tiempo) 
+                                        VALUES (:id_prompt, :id_ia, :respuesta, :tiempo)
+                                    """)
+
+        conn.execute(query, {
+            "id_prompt": id_prompt,
+            "id_ia": id_ia,
+            "respuesta": respuesta,
+            "tiempo": tiempo
+        })
+        conn.commit()
+
+
+class Cronometro:
+    def __init__(self):
+        self.tiempos = {}
+
+    def iniciar(self, nombre):
+        self.tiempos[nombre] = {'inicio': time.perf_counter()}
+
+    def detener(self, nombre):
+        if nombre in self.tiempos:
+            fin = time.perf_counter()
+            inicio = self.tiempos[nombre]['inicio']
+            self.tiempos[nombre]['duracion'] = fin - inicio
+            return self.tiempos[nombre]['duracion']
+
+    def imprimir_tiempo(self, nombre):
+        """Imprime el tiempo de un cronómetro específico"""
+        if nombre in self.tiempos and 'duracion' in self.tiempos[nombre]:
+            tiempo = self.tiempos[nombre]['duracion']
+            print(f"⏱️ {nombre}: {tiempo:.2f} segundos")
+            return tiempo
+        else:
+            print(f"⚠️ No se encontró el cronómetro '{nombre}'")
+            return None
+
+    def extraer_tiempo(self, nombre):
+        """Imprime el tiempo de un cronómetro específico"""
+        if nombre in self.tiempos and 'duracion' in self.tiempos[nombre]:
+            tiempo = self.tiempos[nombre]['duracion']
+            return tiempo
+        else:
+            return None
+
+class RespuestaError:
+    def __init__(self, text):
+        self.text = text
+
 @app.route('/api/send-prompt', methods=['POST'])
 def send_prompt():
     """
@@ -268,6 +335,10 @@ def send_prompt():
     construye el prompt completo y lo devuelve.
     """
     verificar_y_resetear_diario()
+
+    cronometro = Cronometro()
+
+    cronometro.iniciar('full_time')
 
     try:
         datos_entrada = request.get_json()
@@ -282,6 +353,8 @@ def send_prompt():
         print("==================================================")
 
         if not sintomas or not email:
+            cronometro.detener('full_time')
+            cronometro.imprimir_tiempo('full_time')
             return jsonify({'success': False, 'error': 'Faltan síntomas o email'}), 400
 
         # Ingresar Prompt a Tabla "Prompts "
@@ -319,13 +392,8 @@ def send_prompt():
 
             if len(resultados) > 0:
 
-                # Aumentar contador consultas
-                engine = crear_engine_sqlserver('BD_Medic_AI')
-                with engine.connect() as conn:
-
-                    query = text("UPDATE Usuarios SET Consultas += 1 WHERE email = :email")
-                    conn.execute(query, {"email": email})
-                    conn.commit()
+                tie_time = {}
+                TIMEOUTS = 0
 
                 #Ingresar Prompt a Tabla "Prompts "
                 engine = crear_engine_sqlserver('BD_Medic_AI')
@@ -338,13 +406,15 @@ def send_prompt():
                     id_usuario = id_result[0]
 
                     query = text("""
-                                INSERT INTO Prompts (IDUsuario, Contenido, Fecha) 
-                                VALUES (:id_usuario, :contenido, GETDATE())
+                                INSERT INTO Prompts (IDUsuario, Contenido, Fecha, ID_IA, Gravedad) 
+                                VALUES (:id_usuario, :contenido, GETDATE(), :id, :gravedad)
                             """)
 
                     conn.execute(query, {
                         "id_usuario": id_usuario,
-                        "contenido": sintomas
+                        "contenido": sintomas,
+                        "id": -1,
+                        "gravedad": "Pendiente"
                     })
                     conn.commit()
 
@@ -377,223 +447,451 @@ def send_prompt():
                     usuario = conn.execute(query, {"email": email}).fetchone()
 
                 if not usuario:
+                    cronometro.detener('full_time')
+                    cronometro.imprimir_tiempo('full_time')
+
                     return jsonify({'success': False, 'error': 'Usuario no encontrado'}), 404
 
                 edad, sexo, enfermedades, habitos = usuario
 
                 prompt_completo = f"""Rol/Entorno: "Actúa como un médico general especializado en diagnóstico inicial de síntomas comunes."
                                         Tarea: "Analiza los siguientes síntomas del usuario: [{sintomas}]."
-                                        Resultado deseado: "Devuelve el diagnóstico en formato de texto estructurado con las secciones: diagnóstico, gravedad, explicación y recomendaciones médicas."
+                                        Resultado deseado: "Devuelve el diagnóstico en formato de texto estructurado con las secciones: diagnóstico, gravedad (leve, moderada, grave), explicación y recomendaciones médicas."
                                         Parámetros: "Usa lenguaje claro y comprensible para un paciente no especializado, sin mencionar medicamentos ni tratamientos."
                                         Receptor: "Paciente adulto con conocimiento básico en salud. Información relevante del usuario (edad: {edad}, sexo: {sexo}, enfermedades crónicas: {enfermedades}, hábitos: {habitos}) registrada en la base de datos."
                                         """
 
-                # COHERE
-                chat_response_cohere = co.chat(
-                    model=model_cohere,
-                    message=prompt_completo,
-                    chat_history=cohere_chat_history
-                )
 
-                cohere_chat_history.append({"role": "USER", "message": prompt_completo})
-                cohere_chat_history.append({"role": "CHATBOT", "message": chat_response_cohere.text})
-                # Fin COHERE
+                # COHERE con timeout manual
+                cronometro.iniciar('cohere_time')
 
-                # GEMINI
-                chat_response_gemini = gemini_chat_history.send_message(prompt_completo)
-                # Fin GEMINI
+                def llamada_cohere():
+                    return co.chat(
+                        model=model_cohere,
+                        message=prompt_completo,
+                        chat_history=cohere_chat_history
+                    )
 
-                # QWEN
-                qwen_chat_history.append({
-                    "role": "user",
-                    "content": prompt_completo
-                })
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(llamada_cohere)
+                        chat_response_cohere = future.result(timeout=TIMEOUT_LIMIT)
 
-                response = client.chat_completion(
-                    model=model_qwen,
-                    messages=qwen_chat_history,
-                    max_tokens=500
-                )
+                    cohere_chat_history.append({"role": "USER", "message": prompt_completo})
+                    cohere_chat_history.append({"role": "CHATBOT", "message": chat_response_cohere.text})
+                    cronometro.detener('cohere_time')
+                    cronometro.imprimir_tiempo('cohere_time')
 
-                chat_response_qwen = response.choices[0].message.content
+                    cohere_tiempo = cronometro.extraer_tiempo('cohere_time')
+                    tie_time[1] = cohere_tiempo
+                    insertar_respuesta(1, chat_response_cohere.text, cohere_tiempo)
 
-                qwen_chat_history.append({
-                    "role": "assistant",
-                    "content": chat_response_qwen
-                })
-                # Fin QWEN
+                except TimeoutError:
+                    cronometro.detener('cohere_time')
+                    print(f"""⚠️ ERROR: Cohere excedió el límite de {TIMEOUT_LIMIT} segundos""")
+                    tie_time[1] = None
+                    insertar_respuesta(1, "TIMEOUT", None)
+                    chat_response_cohere = RespuestaError("TIMEOUT")
+                    TIMEOUTS += 1
 
-                # MISTRAL
-                mistral_chat_history.append({
-                    "role": "user",
-                    "content": prompt_completo
-                })
+                except Exception as e:
+                    cronometro.detener('cohere_time')
+                    print(f"⚠️ ERROR Cohere: {str(e)}")
+                    tie_time[1] = None
+                    insertar_respuesta(1, f"ERROR: {str(e)}", None)
+                    chat_response_cohere = RespuestaError("ERROR")
+                    TIMEOUTS += 1
 
-                response = client.chat_completion(
-                    model=model_mistral,
-                    messages=mistral_chat_history,
-                    max_tokens=500
-                )
 
-                chat_response_mistral = response.choices[0].message.content
+                # GEMINI con timeout manual
+                cronometro.iniciar('gemini_time')
 
-                mistral_chat_history.append({
-                    "role": "assistant",
-                    "content": chat_response_mistral
-                })
-                # Fin MISTRAL
+                def llamada_gemini():
+                    return gemini_chat_history.send_message(prompt_completo)
 
-                # LLAMA
-                llama_chat_history.append({
-                    "role": "user",
-                    "content": prompt_completo
-                })
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(llamada_gemini)
+                        chat_response_gemini = future.result(timeout=TIMEOUT_LIMIT)
 
-                response = client.chat_completion(
-                    model=model_llama,
-                    messages=llama_chat_history,
-                    max_tokens=500
-                )
+                    cronometro.detener('gemini_time')
+                    cronometro.imprimir_tiempo('gemini_time')
 
-                chat_response_llama = response.choices[0].message.content
+                    gemini_tiempo = cronometro.extraer_tiempo('gemini_time')
+                    tie_time[2] = gemini_tiempo
+                    insertar_respuesta(2, chat_response_gemini.text, gemini_tiempo)
 
-                llama_chat_history.append({
-                    "role": "assistant",
-                    "content": chat_response_llama
-                })
-                # Fin LLAMA
+                except TimeoutError:
+                    cronometro.detener('gemini_time')
+                    print(f"""⚠️ ERROR: Gemini excedió el límite de {TIMEOUT_LIMIT} segundos""")
+                    tie_time[2] = None
+                    insertar_respuesta(2, "TIMEOUT", None)
+                    chat_response_gemini = RespuestaError("TIMEOUT")
+                    TIMEOUTS += 1
 
-                respuestas_ias = {1: chat_response_cohere.text, 2: chat_response_gemini.text, 3: chat_response_qwen,
-                                  4: chat_response_mistral, 5: chat_response_llama}
-                votos = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
 
-                # Modelo Meta-Votacion / 1:COHERE / 2:GEMINI / 3:QWEN / 4:MISTRAL / 5:LLAMA /
-                prompt_votacion = f"""Rol/Entorno: "Actúa como un médico general el cual va elegir entre multiples diagnosticos el mejor."
-                                                Tarea: "Analiza los siguientes diagnosticos numerados: 1:[{chat_response_cohere.text}], 2:[{chat_response_gemini.text}], 3:[{chat_response_qwen}], 4:[{chat_response_mistral}], 5:[{chat_response_llama}]."
-                                                Resultado deseado: "Devuelve unicamente el numero del diagnostico que elegiste, no agregues contexto ni informacion adicional, unicamente el numero del diagnostico elegido."
-                                                """
+                except Exception as e:
+                    cronometro.detener('gemini_time')
+                    print(f"⚠️ ERROR Gemini: {str(e)}")
+                    tie_time[2] = None
+                    insertar_respuesta(2, f"ERROR: {str(e)}", None)
+                    chat_response_gemini = RespuestaError("ERROR")
+                    TIMEOUTS += 1
 
-                print("=" * 50)
-                print("Modelo Meta-Votacion / 1:COHERE / 2:GEMINI / 3:QWEN / 4:MISTRAL / 5:LLAMA /")
 
-                # COHERE
-                votacion_cohere = co.chat(
-                    model=model_cohere,
-                    message=prompt_votacion,
-                    chat_history=cohere_chat_history
-                )
 
-                print("COHERE Votacion: ", votacion_cohere.text)
-                cohere_chat_history.append({"role": "USER", "message": prompt_votacion})
-                cohere_chat_history.append({"role": "CHATBOT", "message": votacion_cohere.text})
+                # QWEN (Hugging Face)
+                cronometro.iniciar('qwen_time')
 
-                voto_cohere = extraer_numero_voto(votacion_cohere.text)
-                if voto_cohere:
-                    votos[voto_cohere] += 1
-                else:
-                    print(f"⚠️ COHERE voto inválido: {votacion_cohere.text}")
-                # Fin COHERE
+                def llamada_qwen():
+                    qwen_chat_history.append({
+                        "role": "user",
+                        "content": prompt_completo
+                    })
 
-                # GEMINI
-                votacion_gemini = gemini_chat_history.send_message(prompt_votacion)
-                print("GEMINI Votacion: ", votacion_gemini.text)
+                    response = client.chat_completion(
+                        model=model_qwen,
+                        messages=qwen_chat_history,
+                        max_tokens=500
+                    )
+                    return response
 
-                voto_gemini = extraer_numero_voto(votacion_gemini.text)
-                if voto_gemini:
-                    votos[voto_gemini] += 1
-                else:
-                    print(f"⚠️ GEMINI voto inválido: {votacion_gemini.text}")                # Fin GEMINI
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(llamada_qwen)
+                        response = future.result(timeout=TIMEOUT_LIMIT)
 
-                # QWEN
-                qwen_chat_history.append({
-                    "role": "user",
-                    "content": prompt_votacion
-                })
+                    chat_response_qwen = response.choices[0].message.content
 
-                response = client.chat_completion(
-                    model=model_qwen,
-                    messages=qwen_chat_history,
-                    max_tokens=500
-                )
+                    qwen_chat_history.append({
+                        "role": "assistant",
+                        "content": chat_response_qwen
+                    })
 
-                votacion_qwen = response.choices[0].message.content
+                    cronometro.detener('qwen_time')
+                    cronometro.imprimir_tiempo('qwen_time')
 
-                qwen_chat_history.append({
-                    "role": "assistant",
-                    "content": votacion_qwen
-                })
+                    qwen_tiempo = cronometro.extraer_tiempo('qwen_time')
+                    tie_time[3] = qwen_tiempo
+                    insertar_respuesta(3, chat_response_qwen, qwen_tiempo)
 
-                print("QWEN Votacion: ", votacion_qwen)
-                voto_qwen = extraer_numero_voto(votacion_qwen)
-                if voto_qwen:
-                    votos[voto_qwen] += 1
-                else:
-                    print(f"⚠️ QWEN voto inválido: {votacion_qwen}")                # Fin QWEN
+                except TimeoutError:
+                    cronometro.detener('qwen_time')
+                    print(f"""⚠️ ERROR: Qwen excedió el límite de {TIMEOUT_LIMIT} segundos""")
+                    tie_time[3] = None
+                    insertar_respuesta(3, "TIMEOUT", None)
+                    TIMEOUTS += 1
+
+
+                except Exception as e:
+                    cronometro.detener('qwen_time')
+                    print(f"❌ ERROR Qwen: {str(e)}")
+                    tie_time[3] = None
+                    insertar_respuesta(3, f"ERROR: {str(e)}", None)
+                    TIMEOUTS += 1
+
 
                 # MISTRAL
-                mistral_chat_history.append({
-                    "role": "user",
-                    "content": prompt_votacion
-                })
+                cronometro.iniciar('mistral_time')
 
-                response = client.chat_completion(
-                    model=model_mistral,
-                    messages=mistral_chat_history,
-                    max_tokens=500
-                )
+                def llamada_mistral():
+                    mistral_chat_history.append({
+                        "role": "user",
+                        "content": prompt_completo
+                    })
 
-                votacion_mistral = response.choices[0].message.content
+                    response = client.chat_completion(
+                        model=model_mistral,
+                        messages=mistral_chat_history,
+                        max_tokens=500
+                    )
+                    return response
 
-                mistral_chat_history.append({
-                    "role": "assistant",
-                    "content": votacion_mistral
-                })
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(llamada_mistral)
+                        response = future.result(timeout=TIMEOUT_LIMIT)
 
-                print("MISTRAL Votacion: ", votacion_mistral)
-                voto_mistral = extraer_numero_voto(votacion_mistral)
-                if voto_mistral:
-                    votos[voto_mistral] += 1
-                else:
-                    print(f"⚠️ MISTRAL voto inválido: {votacion_mistral}")                # Fin MISTRAL
+                    chat_response_mistral = response.choices[0].message.content
+
+                    mistral_chat_history.append({
+                        "role": "assistant",
+                        "content": chat_response_mistral
+                    })
+
+                    cronometro.detener('mistral_time')
+                    cronometro.imprimir_tiempo('mistral_time')
+
+                    mistral_tiempo = cronometro.extraer_tiempo('mistral_time')
+                    tie_time[4] = mistral_tiempo
+                    insertar_respuesta(4, chat_response_mistral, mistral_tiempo)
+
+                except TimeoutError:
+                    cronometro.detener('mistral_time')
+                    print(f"""⚠️ ERROR: Mistral excedió el límite de {TIMEOUT_LIMIT} segundos""")
+                    tie_time[4] = None
+                    insertar_respuesta(4, "TIMEOUT", None)
+                    TIMEOUTS += 1
+
+
+                except Exception as e:
+                    cronometro.detener('mistral_time')
+                    print(f"❌ ERROR Mistral: {str(e)}")
+                    tie_time[4] = None
+                    insertar_respuesta(4, f"ERROR: {str(e)}", None)
+                    TIMEOUTS += 1
+
 
                 # LLAMA
-                llama_chat_history.append({
-                    "role": "user",
-                    "content": prompt_votacion
-                })
+                cronometro.iniciar('llama_time')
 
-                response = client.chat_completion(
-                    model=model_llama,
-                    messages=llama_chat_history,
-                    max_tokens=500
-                )
+                def llamada_llama():
+                    llama_chat_history.append({
+                        "role": "user",
+                        "content": prompt_completo
+                    })
 
-                votacion_llama = response.choices[0].message.content
+                    response = client.chat_completion(
+                        model=model_llama,
+                        messages=llama_chat_history,
+                        max_tokens=500
+                    )
+                    return response
 
-                llama_chat_history.append({
-                    "role": "assistant",
-                    "content": votacion_llama
-                })
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(llamada_llama)
+                        response = future.result(timeout=TIMEOUT_LIMIT)
 
-                print("LLAMA Votacion: ", votacion_llama)
-                voto_llama = extraer_numero_voto(votacion_llama)
-                if voto_llama:
-                    votos[voto_llama] += 1
+                    chat_response_llama = response.choices[0].message.content
+
+                    llama_chat_history.append({
+                        "role": "assistant",
+                        "content": chat_response_llama
+                    })
+
+                    cronometro.detener('llama_time')
+                    cronometro.imprimir_tiempo('llama_time')
+
+                    llama_tiempo = cronometro.extraer_tiempo('llama_time')
+                    tie_time[5] = llama_tiempo
+                    insertar_respuesta(5, chat_response_llama, llama_tiempo)
+
+                except TimeoutError:
+                    cronometro.detener('llama_time')
+                    print(f"""⚠️ ERROR: Llama excedió el límite de {TIMEOUT_LIMIT} segundos""")
+                    tie_time[5] = None
+                    insertar_respuesta(5, "TIMEOUT", None)
+                    TIMEOUTS += 1
+
+
+                except Exception as e:
+                    cronometro.detener('llama_time')
+                    print(f"❌ ERROR Llama: {str(e)}")
+                    tie_time[5] = None
+                    insertar_respuesta(5, f"ERROR: {str(e)}", None)
+                    TIMEOUTS += 1
+
+                if TIMEOUTS < 3:
+
+                    respuestas_ias = {1: chat_response_cohere.text, 2: chat_response_gemini.text, 3: chat_response_qwen, 4: chat_response_mistral, 5: chat_response_llama}
+                    votos = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+
+                    # Modelo Meta-Votacion / 1:COHERE / 2:GEMINI / 3:QWEN / 4:MISTRAL / 5:LLAMA /
+                    prompt_votacion = f"""Rol/Entorno: "Actúa como un médico general el cual va elegir entre multiples diagnosticos el mejor."
+                                                    Tarea: "Analiza los siguientes diagnosticos numerados: 1:[{chat_response_cohere.text}], 2:[{chat_response_gemini.text}], 3:[{chat_response_qwen}], 4:[{chat_response_mistral}], 5:[{chat_response_llama}]."
+                                                    Resultado deseado: "Devuelve unicamente el numero del diagnostico que elegiste, no agregues contexto ni informacion adicional, unicamente el numero del diagnostico elegido."
+                                                    """
+
+                    print("=" * 50)
+                    print("Modelo Meta-Votacion / 1:COHERE / 2:GEMINI / 3:QWEN / 4:MISTRAL / 5:LLAMA /")
+
+                    cronometro.iniciar('voting_time')
+
+                    # COHERE
+                    votacion_cohere = co.chat(
+                        model=model_cohere,
+                        message=prompt_votacion,
+                        chat_history=cohere_chat_history
+                    )
+
+                    print("COHERE Votacion: ", votacion_cohere.text)
+                    cohere_chat_history.append({"role": "USER", "message": prompt_votacion})
+                    cohere_chat_history.append({"role": "CHATBOT", "message": votacion_cohere.text})
+
+                    voto_cohere = extraer_numero_voto(votacion_cohere.text)
+                    if voto_cohere:
+                        votos[voto_cohere] += 1
+                    else:
+                        print(f"⚠️ COHERE voto inválido: {votacion_cohere.text}")
+                    # Fin COHERE
+
+                    # GEMINI
+                    votacion_gemini = gemini_chat_history.send_message(prompt_votacion)
+                    print("GEMINI Votacion: ", votacion_gemini.text)
+
+                    voto_gemini = extraer_numero_voto(votacion_gemini.text)
+                    if voto_gemini:
+                        votos[voto_gemini] += 1
+                    else:
+                        print(f"⚠️ GEMINI voto inválido: {votacion_gemini.text}")                # Fin GEMINI
+
+                    # QWEN
+                    qwen_chat_history.append({
+                        "role": "user",
+                        "content": prompt_votacion
+                    })
+
+                    response = client.chat_completion(
+                        model=model_qwen,
+                        messages=qwen_chat_history,
+                        max_tokens=500
+                    )
+
+                    votacion_qwen = response.choices[0].message.content
+
+                    qwen_chat_history.append({
+                        "role": "assistant",
+                        "content": votacion_qwen
+                    })
+
+                    print("QWEN Votacion: ", votacion_qwen)
+                    voto_qwen = extraer_numero_voto(votacion_qwen)
+                    if voto_qwen:
+                        votos[voto_qwen] += 1
+                    else:
+                        print(f"⚠️ QWEN voto inválido: {votacion_qwen}")                # Fin QWEN
+
+                    # MISTRAL
+                    mistral_chat_history.append({
+                        "role": "user",
+                        "content": prompt_votacion
+                    })
+
+                    response = client.chat_completion(
+                        model=model_mistral,
+                        messages=mistral_chat_history,
+                        max_tokens=500
+                    )
+
+                    votacion_mistral = response.choices[0].message.content
+
+                    mistral_chat_history.append({
+                        "role": "assistant",
+                        "content": votacion_mistral
+                    })
+
+                    print("MISTRAL Votacion: ", votacion_mistral)
+                    voto_mistral = extraer_numero_voto(votacion_mistral)
+                    if voto_mistral:
+                        votos[voto_mistral] += 1
+                    else:
+                        print(f"⚠️ MISTRAL voto inválido: {votacion_mistral}")                # Fin MISTRAL
+
+                    # LLAMA
+                    llama_chat_history.append({
+                        "role": "user",
+                        "content": prompt_votacion
+                    })
+
+                    response = client.chat_completion(
+                        model=model_llama,
+                        messages=llama_chat_history,
+                        max_tokens=500
+                    )
+
+                    votacion_llama = response.choices[0].message.content
+
+                    llama_chat_history.append({
+                        "role": "assistant",
+                        "content": votacion_llama
+                    })
+
+                    print("LLAMA Votacion: ", votacion_llama)
+                    voto_llama = extraer_numero_voto(votacion_llama)
+                    if voto_llama:
+                        votos[voto_llama] += 1
+                    else:
+                        print(f"⚠️ LLAMA voto inválido: {votacion_llama}")                # Fin LLAMA
+
+                    print("=" * 50)
+
+                    print(votos)
+                    max_valor = max(votos.values())
+                    # top_votos = max(votos, key=votos.get)
+                    top_votos = [k for k, v in votos.items() if v == max_valor]
+
+                    ia_seleccionada = None
+
+                    if len(top_votos) > 1:
+
+                        least_time = float('inf')
+
+                        for ia in top_votos:
+                            if tie_time[ia] < least_time:
+                                least_time = tie_time[ia]
+                                ia_seleccionada = ia
+                    else:
+                        ia_seleccionada = top_votos[0]
+
+                    print("GANO LA IA: ", ia_seleccionada)
+
+                    prompt_seleccionado = respuestas_ias[ia_seleccionada]
+                    cronometro.detener('voting_time')
+                    cronometro.imprimir_tiempo('voting_time')
+
+                    logger.info(f"Prompt completo generado para {email}")
+
+                    # Insertar IA Ganadora
+                    engine = crear_engine_sqlserver('BD_Medic_AI')
+                    with engine.connect() as conn:
+                        # Obtener el IDPrompt
+                        query = text(""" SELECT TOP 1 IDPrompt
+                                                            FROM Prompts 
+                                                            ORDER BY Fecha DESC
+                                                        """)
+                        resultado = conn.execute(query).fetchone()
+                        id_prompt = resultado[0]
+
+                        query = text("""
+                                                        UPDATE Prompts  
+                                                        SET ID_IA = :ia_ganadora
+                                                        WHERE IDPrompt = :id_prompt
+                                                    """)
+
+                        conn.execute(query, {
+                            "ia_ganadora": ia_seleccionada,
+                            "id_prompt": id_prompt
+                        })
+                        conn.commit()
+
+
+
+                    # Aumentar contador consultas
+                    engine = crear_engine_sqlserver('BD_Medic_AI')
+                    with engine.connect() as conn:
+
+                        query = text("UPDATE Usuarios SET Consultas += 1 WHERE email = :email")
+                        conn.execute(query, {"email": email})
+                        conn.commit()
+
+                    cronometro.detener('full_time')
+                    cronometro.imprimir_tiempo('full_time')
+
+                    return jsonify({'success': True, 'respuesta': prompt_seleccionado}), 200
+
                 else:
-                    print(f"⚠️ LLAMA voto inválido: {votacion_llama}")                # Fin LLAMA
+                    cronometro.detener('full_time')
+                    cronometro.imprimir_tiempo('full_time')
 
-                print("=" * 50)
+                    return jsonify({'success': True,
+                                    'respuesta': "Ocurrio un error al procesar tu consulta. Intentalo nuevamente"}), 200
 
-                print(votos)
-                top_votos = max(votos, key=votos.get)
-
-                prompt_seleccionado = respuestas_ias[top_votos]
-
-                logger.info(f"Prompt completo generado para {email}")
-
-                return jsonify({'success': True, 'respuesta': prompt_seleccionado}), 200
 
             else:
+                cronometro.detener('full_time')
+                cronometro.imprimir_tiempo('full_time')
+
                 # No hay coincidencias con enfermedades respiratorias
                 return jsonify({
                     'success': True,
@@ -601,11 +899,17 @@ def send_prompt():
                     'respuesta': "Lo siento, solo puedo ayudar con síntomas relacionados a enfermedades respiratorias."
                 }), 200
         else:
+            cronometro.detener('full_time')
+            cronometro.imprimir_tiempo('full_time')
+
             return jsonify({'success': True,
-                            'respuesta': "Has alcanzado el numero maximo de consultaas hoy. Intentalo nuevamente mañana"}), 200
+                            'respuesta': "Has alcanzado el numero maximo de consultas hoy. Intentalo nuevamente mañana"}), 200
 
     except Exception as e:
         logger.error(f"Error en send_prompt: {str(e)}")
+        cronometro.detener('full_time')
+        cronometro.imprimir_tiempo('full_time')
+
         return jsonify({'success': False, 'error': str(e)}), 500
 
 

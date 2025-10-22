@@ -584,6 +584,8 @@
           return ok;
         }
 
+        /* Funcion Pasada
+
         async function sendVerificationEmail(datos) {
           const SERVICE_ID = "service_27mhvns";
           const TEMPLATE_ID = "template_kqwugi6";
@@ -615,6 +617,48 @@
           }?${params.toString()}`;
 
           console.log("URL de verificación generada:", verificationUrl);
+
+          const templateParams = {
+            to_email: datos.email,
+            to_name: datos.nombre,
+            confirm_link: verificationUrl,
+          };
+
+          return emailjs.send(SERVICE_ID, TEMPLATE_ID, templateParams);
+        }
+        */
+
+        async function sendVerificationEmail(datos) {
+          const SERVICE_ID = "service_27mhvns";
+          const TEMPLATE_ID = "template_kqwugi6";
+
+          const timestamp = Math.floor(Date.now() / 1000);
+
+          // ✅ SOLUCIÓN: Construir la URL correctamente
+          const baseUrl = window.location.origin; // http://127.0.0.1:5500 o tu dominio
+          const currentPath = window.location.pathname; // /carpeta/form_page.html
+          const directory = currentPath.substring(
+            0,
+            currentPath.lastIndexOf("/") + 1
+          ); // /carpeta/
+
+          // Construir la URL completa al archivo register_pass.html
+          const verificationBaseUrl = `${baseUrl}${directory}register_pass.html`;
+
+          // Añadir todos los datos como parámetros de búsqueda
+          const params = new URLSearchParams({
+            nombre: datos.nombre,
+            email: datos.email,
+            edad: datos.edad,
+            sexo: datos.sexo,
+            enfermedades: datos.enfermedades,
+            habitos: datos.habitos,
+            timestamp: timestamp,
+          });
+
+          const verificationUrl = `${verificationBaseUrl}?${params.toString()}`;
+
+          console.log("✅ URL de verificación generada:", verificationUrl);
 
           const templateParams = {
             to_email: datos.email,

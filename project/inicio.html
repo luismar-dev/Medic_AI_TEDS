@@ -195,10 +195,36 @@
       }
     });
 
+    /* Funcion pasada
     function displayChatMessage(text, type) {
       const messageElement = document.createElement("div");
       messageElement.classList.add("message", type);
       messageElement.textContent = text;
+      chatWindow.appendChild(messageElement);
+      chatWindow.scrollTop = chatWindow.scrollHeight;
+      return messageElement;
+    }
+      */
+
+    function displayChatMessage(text, type, showLoadingGif = false) {
+      const messageElement = document.createElement("div");
+      messageElement.classList.add("message", type);
+
+      if (showLoadingGif) {
+        messageElement.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <img 
+          src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/refs/heads/master/imagencarga.gif" 
+          alt="Cargando..." 
+          style="width: 28px; height: 28px; border-radius: 50%;"
+        />
+        <span style="flex: 1;">${text}</span>
+      </div>
+    `;
+      } else {
+        messageElement.textContent = text;
+      }
+
       chatWindow.appendChild(messageElement);
       chatWindow.scrollTop = chatWindow.scrollHeight;
       return messageElement;
@@ -234,7 +260,8 @@
 
       const loadingMessage = displayChatMessage(
         "Evaluando y analizando síntomas...",
-        "received"
+        "received",
+        true
       );
 
       try {
