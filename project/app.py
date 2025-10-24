@@ -1,7 +1,10 @@
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, send_from_directory
 from flask_cors import CORS
 from sqlalchemy import create_engine, text
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
+import matplotlib.pyplot
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 from datetime import datetime
 import logging
 import hashlib
@@ -49,7 +52,8 @@ mistral_chat_history = []
 llama_chat_history = []
 
 #Variables Universales
-TIMEOUT_LIMIT = 5
+TIMEOUT_LIMIT = 20
+VOTING_LIMIT = 6
 
 ''' ------------------------------------ '''
 
@@ -76,6 +80,12 @@ def crear_engine_sqlserver(BD):
 def hash_password(password):
     """Hashear la contraseña usando SHA-256"""
     return hashlib.sha256(password.encode()).hexdigest()
+
+@app.route('/static/graficos/<path:filename>')
+def serve_grafico(filename):
+    """Sirve los gráficos generados"""
+    graficos_path = os.path.join(os.path.dirname(__file__), 'static', 'graficos')
+    return send_from_directory(graficos_path, filename)
 
 
 @app.route('/')
@@ -580,6 +590,7 @@ def send_prompt():
                     print(f"""⚠️ ERROR: Qwen excedió el límite de {TIMEOUT_LIMIT} segundos""")
                     tie_time[3] = None
                     insertar_respuesta(3, "TIMEOUT", None)
+                    chat_response_qwen = RespuestaError("TIMEOUT")
                     TIMEOUTS += 1
 
 
@@ -588,6 +599,7 @@ def send_prompt():
                     print(f"❌ ERROR Qwen: {str(e)}")
                     tie_time[3] = None
                     insertar_respuesta(3, f"ERROR: {str(e)}", None)
+                    chat_response_qwen = RespuestaError("ERROR")
                     TIMEOUTS += 1
 
 
@@ -631,6 +643,8 @@ def send_prompt():
                     print(f"""⚠️ ERROR: Mistral excedió el límite de {TIMEOUT_LIMIT} segundos""")
                     tie_time[4] = None
                     insertar_respuesta(4, "TIMEOUT", None)
+                    chat_response_mistral = RespuestaError("TIMEOUT")
+
                     TIMEOUTS += 1
 
 
@@ -639,6 +653,7 @@ def send_prompt():
                     print(f"❌ ERROR Mistral: {str(e)}")
                     tie_time[4] = None
                     insertar_respuesta(4, f"ERROR: {str(e)}", None)
+                    chat_response_mistral = RespuestaError("ERROR")
                     TIMEOUTS += 1
 
 
@@ -682,6 +697,7 @@ def send_prompt():
                     print(f"""⚠️ ERROR: Llama excedió el límite de {TIMEOUT_LIMIT} segundos""")
                     tie_time[5] = None
                     insertar_respuesta(5, "TIMEOUT", None)
+                    chat_response_llama = RespuestaError("TIMEOUT")
                     TIMEOUTS += 1
 
 
@@ -690,6 +706,7 @@ def send_prompt():
                     print(f"❌ ERROR Llama: {str(e)}")
                     tie_time[5] = None
                     insertar_respuesta(5, f"ERROR: {str(e)}", None)
+                    chat_response_llama = RespuestaError("ERROR")
                     TIMEOUTS += 1
 
                 if TIMEOUTS < 3:
@@ -699,7 +716,7 @@ def send_prompt():
 
                     # Modelo Meta-Votacion / 1:COHERE / 2:GEMINI / 3:QWEN / 4:MISTRAL / 5:LLAMA /
                     prompt_votacion = f"""Rol/Entorno: "Actúa como un médico general el cual va elegir entre multiples diagnosticos el mejor."
-                                                    Tarea: "Analiza los siguientes diagnosticos numerados: 1:[{chat_response_cohere.text}], 2:[{chat_response_gemini.text}], 3:[{chat_response_qwen}], 4:[{chat_response_mistral}], 5:[{chat_response_llama}]."
+                                                    Tarea: "Analiza los siguientes diagnosticos numerados, en caso de que un resultado sea "TIMEOUT" o "ERROR" no lo tomes en cuenta al momento de la votacion: 1:[{chat_response_cohere.text}], 2:[{chat_response_gemini.text}], 3:[{chat_response_qwen}], 4:[{chat_response_mistral}], 5:[{chat_response_llama}]."
                                                     Resultado deseado: "Devuelve unicamente el numero del diagnostico que elegiste, no agregues contexto ni informacion adicional, unicamente el numero del diagnostico elegido."
                                                     """
 
@@ -734,85 +751,129 @@ def send_prompt():
                     if voto_gemini:
                         votos[voto_gemini] += 1
                     else:
-                        print(f"⚠️ GEMINI voto inválido: {votacion_gemini.text}")                # Fin GEMINI
+                        print(f"⚠️ GEMINI voto inválido: {votacion_gemini.text}")
+                    # Fin GEMINI
 
                     # QWEN
-                    qwen_chat_history.append({
-                        "role": "user",
-                        "content": prompt_votacion
-                    })
+                    def llamada_qwen():
+                        qwen_chat_history.append({
+                            "role": "user",
+                            "content": prompt_votacion
+                        })
 
-                    response = client.chat_completion(
-                        model=model_qwen,
-                        messages=qwen_chat_history,
-                        max_tokens=500
-                    )
+                        response = client.chat_completion(
+                            model=model_qwen,
+                            messages=qwen_chat_history,
+                            max_tokens=500
+                        )
+                        return response
 
-                    votacion_qwen = response.choices[0].message.content
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(llamada_qwen)
+                            response = future.result(timeout=VOTING_LIMIT)
 
-                    qwen_chat_history.append({
-                        "role": "assistant",
-                        "content": votacion_qwen
-                    })
+                        votacion_qwen = response.choices[0].message.content
 
-                    print("QWEN Votacion: ", votacion_qwen)
-                    voto_qwen = extraer_numero_voto(votacion_qwen)
-                    if voto_qwen:
-                        votos[voto_qwen] += 1
-                    else:
-                        print(f"⚠️ QWEN voto inválido: {votacion_qwen}")                # Fin QWEN
+                        qwen_chat_history.append({
+                            "role": "assistant",
+                            "content": votacion_qwen
+                        })
 
-                    # MISTRAL
-                    mistral_chat_history.append({
-                        "role": "user",
-                        "content": prompt_votacion
-                    })
+                        print("Qwen Votacion: ", votacion_qwen)
+                        voto_qwen = extraer_numero_voto(votacion_qwen)
+                        if voto_qwen:
+                            votos[voto_qwen] += 1
+                        else:
+                            print(f"⚠️ Qwen voto inválido: {votacion_qwen}")
 
-                    response = client.chat_completion(
-                        model=model_mistral,
-                        messages=mistral_chat_history,
-                        max_tokens=500
-                    )
+                    except TimeoutError:
+                        print(f"""⚠️ ERROR: Qwen excedió el límite de {VOTING_LIMIT} segundos""")
 
-                    votacion_mistral = response.choices[0].message.content
+                    except Exception as e:
+                        print(f"❌ ERROR Qwen: {str(e)}")
 
-                    mistral_chat_history.append({
-                        "role": "assistant",
-                        "content": votacion_mistral
-                    })
 
-                    print("MISTRAL Votacion: ", votacion_mistral)
-                    voto_mistral = extraer_numero_voto(votacion_mistral)
-                    if voto_mistral:
-                        votos[voto_mistral] += 1
-                    else:
-                        print(f"⚠️ MISTRAL voto inválido: {votacion_mistral}")                # Fin MISTRAL
+                    #MISTRAL
+                    def llamada_mistral():
+                        mistral_chat_history.append({
+                            "role": "user",
+                            "content": prompt_votacion
+                        })
+
+                        response = client.chat_completion(
+                            model=model_mistral,
+                            messages=mistral_chat_history,
+                            max_tokens=500
+                        )
+                        return response
+
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(llamada_mistral)
+                            response = future.result(timeout=VOTING_LIMIT)
+
+                        votacion_mistral = response.choices[0].message.content
+
+                        mistral_chat_history.append({
+                            "role": "assistant",
+                            "content": votacion_mistral
+                        })
+
+                        print("Mistral Votacion: ", votacion_mistral)
+                        voto_mistral = extraer_numero_voto(votacion_mistral)
+                        if voto_mistral:
+                            votos[voto_mistral] += 1
+                        else:
+                            print(f"⚠️ Mistral voto inválido: {votacion_mistral}")
+
+                    except TimeoutError:
+                        print(f"""⚠️ ERROR: Mistral excedió el límite de {VOTING_LIMIT} segundos""")
+
+                    except Exception as e:
+                        print(f"❌ ERROR Mistral: {str(e)}")
 
                     # LLAMA
-                    llama_chat_history.append({
-                        "role": "user",
-                        "content": prompt_votacion
-                    })
 
-                    response = client.chat_completion(
-                        model=model_llama,
-                        messages=llama_chat_history,
-                        max_tokens=500
-                    )
+                    def llamada_llama():
+                        llama_chat_history.append({
+                            "role": "user",
+                            "content": prompt_votacion
+                        })
 
-                    votacion_llama = response.choices[0].message.content
+                        response = client.chat_completion(
+                            model=model_llama,
+                            messages=llama_chat_history,
+                            max_tokens=500
+                        )
+                        return response
 
-                    llama_chat_history.append({
-                        "role": "assistant",
-                        "content": votacion_llama
-                    })
+                    try:
+                        with ThreadPoolExecutor(max_workers=1) as executor:
+                            future = executor.submit(llamada_llama)
+                            response = future.result(timeout=VOTING_LIMIT)
 
-                    print("LLAMA Votacion: ", votacion_llama)
-                    voto_llama = extraer_numero_voto(votacion_llama)
-                    if voto_llama:
-                        votos[voto_llama] += 1
-                    else:
-                        print(f"⚠️ LLAMA voto inválido: {votacion_llama}")                # Fin LLAMA
+                        votacion_llama = response.choices[0].message.content
+
+                        llama_chat_history.append({
+                            "role": "assistant",
+                            "content": votacion_llama
+                        })
+
+                        print("LLAMA Votacion: ", votacion_llama)
+                        voto_llama = extraer_numero_voto(votacion_llama)
+                        if voto_llama:
+                            votos[voto_llama] += 1
+                        else:
+                            print(f"⚠️ LLAMA voto inválido: {votacion_llama}")
+
+                    except TimeoutError:
+                        print(f"""⚠️ ERROR: Llama excedió el límite de {VOTING_LIMIT} segundos""")
+
+                    except Exception as e:
+                        print(f"❌ ERROR Llama: {str(e)}")
+
+
 
                     print("=" * 50)
 
@@ -836,7 +897,8 @@ def send_prompt():
 
                     print("GANO LA IA: ", ia_seleccionada)
 
-                    prompt_seleccionado = respuestas_ias[ia_seleccionada]
+                    prompt_prelim = respuestas_ias[ia_seleccionada]
+                    prompt_seleccionado = prompt_prelim.replace('#', '').replace('*', '')
                     cronometro.detener('voting_time')
                     cronometro.imprimir_tiempo('voting_time')
 
@@ -865,6 +927,147 @@ def send_prompt():
                         })
                         conn.commit()
 
+                    # Extraer nivel de gravedad
+
+                    leve = "leve"
+                    moderada = "moderada"
+                    grave = "grave"
+
+                    conteo_leve = prompt_seleccionado.lower().count(leve.lower())
+                    conteo_moderada = prompt_seleccionado.lower().count(moderada.lower())
+                    conteo_grave = prompt_seleccionado.lower().count(grave.lower())
+
+                    if all([conteo_leve == 0, conteo_moderada == 0, conteo_grave == 0]):
+                        print("Gravedad: No se encontro un nivel de gravedad")
+
+                        # Insertar nivel de gravedad
+                        engine = crear_engine_sqlserver('BD_Medic_AI')
+                        with engine.connect() as conn:
+                            # Obtener el IDPrompt
+                            query = text(""" SELECT TOP 1 IDPrompt
+                                                                                                            FROM Prompts 
+                                                                                                            ORDER BY Fecha DESC
+                                                                                                        """)
+                            resultado = conn.execute(query).fetchone()
+                            id_prompt = resultado[0]
+
+                            query = text("""
+                                                                                                        UPDATE Prompts  
+                                                                                                        SET Gravedad = 'NO FIND'
+                                                                                                        WHERE IDPrompt = :id_prompt
+                                                                                                    """)
+
+                            conn.execute(query, {
+                                "id_prompt": id_prompt
+                            })
+                            conn.commit()
+
+
+                    else:
+
+                        max_nivel = max(conteo_leve, conteo_moderada, conteo_grave)
+
+                        gravedad = ""
+                        if conteo_leve == max_nivel:
+                            gravedad += leve
+                            gravedad += " "
+
+                        if conteo_moderada == max_nivel:
+                            gravedad += moderada
+                            gravedad += " "
+
+                        if conteo_grave == max_nivel:
+                            gravedad += grave
+                            gravedad += " "
+
+                        print("Gravedad: ", gravedad)
+
+                        # Insertar nivel de gravedad
+                        engine = crear_engine_sqlserver('BD_Medic_AI')
+                        with engine.connect() as conn:
+                            # Obtener el IDPrompt
+                            query = text(""" SELECT TOP 1 IDPrompt
+                                                                                    FROM Prompts 
+                                                                                    ORDER BY Fecha DESC
+                                                                                """)
+                            resultado = conn.execute(query).fetchone()
+                            id_prompt = resultado[0]
+
+                            query = text("""
+                                                                                UPDATE Prompts  
+                                                                                SET Gravedad = :gravedad
+                                                                                WHERE IDPrompt = :id_prompt
+                                                                            """)
+
+                            conn.execute(query, {
+                                "gravedad": gravedad,
+                                "id_prompt": id_prompt
+                            })
+                            conn.commit()
+
+                            #Grafico Visual Gravedad
+
+                            # Datos originales
+                            categorias_completas = ['Leve', 'Moderada', 'Grave']
+                            valores_completos = [conteo_leve, conteo_moderada, conteo_grave]
+                            colores_completos = ['#77bd66', '#f9e547', '#f75c4c']
+
+                            # Filtrar solo los valores mayores a 0
+                            categorias = []
+                            valores = []
+                            colores = []
+
+                            for i in range(len(valores_completos)):
+                                if valores_completos[i] > 0:
+                                    categorias.append(categorias_completas[i])
+                                    valores.append(valores_completos[i])
+                                    colores.append(colores_completos[i])
+
+                            # Solo crear el gráfico si hay al menos un valor mayor a 0
+                            if len(valores) > 0:
+                                """plt.figure(figsize=(6, 6))
+                                plt.pie(valores, labels=categorias, colors=colores, autopct='%1.1f%%', startangle=90)
+                                plt.title('Nivel de Gravedad Detectado')
+
+                                # Guardar el gráfico como imagen
+                                img_path = os.path.join(os.path.dirname(__file__), 'static', 'graficos')
+                                os.makedirs(img_path, exist_ok=True)
+                                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                                img_filename = f'gravedad_{timestamp}.png'
+                                img_fullpath = os.path.join(img_path, img_filename)
+                                plt.savefig(img_fullpath, bbox_inches='tight', dpi=100)
+                                plt.close()"""
+
+                                fig, ax = plt.subplots(figsize=(6, 6))
+
+                                # Cambiar el color de fondo de la figura completa
+                                fig.patch.set_facecolor('#7c3aad')  # Fondo morado como tu diseño
+
+                                # Cambiar el color de fondo del área del gráfico
+                                ax.set_facecolor('#7c3aad')  # Mismo color morado
+
+                                # Crear el gráfico de pastel
+                                ax.pie(valores, labels=categorias, colors=colores, autopct='%1.1f%%', startangle=90)
+
+                                # Cambiar color del título
+                                ax.set_title('Nivel de Gravedad Detectado', color='white', fontsize=14,
+                                             fontweight='bold')
+
+                                # Guardar el gráfico como imagen
+                                img_path = os.path.join(os.path.dirname(__file__), 'static', 'graficos')
+                                os.makedirs(img_path, exist_ok=True)
+                                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                                img_filename = f'gravedad_{timestamp}.png'
+                                img_fullpath = os.path.join(img_path, img_filename)
+                                plt.savefig(img_fullpath, bbox_inches='tight', dpi=100, facecolor='#7c3aad')
+                                plt.close()
+
+                                # URL relativa para enviar al frontend
+                                img_url = f'/static/graficos/{img_filename}'
+                            else:
+                                # Si todos los valores son 0, no generar gráfico
+                                img_url = None
+                                print("⚠️ Todos los valores de gravedad son 0, no se genera gráfico")
 
 
                     # Aumentar contador consultas
@@ -878,7 +1081,12 @@ def send_prompt():
                     cronometro.detener('full_time')
                     cronometro.imprimir_tiempo('full_time')
 
-                    return jsonify({'success': True, 'respuesta': prompt_seleccionado}), 200
+                    return jsonify({
+                        'success': True,
+                        'respuesta': prompt_seleccionado,
+                        'grafico_url': img_url,
+                        'gravedad': gravedad.strip()
+                    }), 200
 
                 else:
                     cronometro.detener('full_time')

@@ -5,6 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Pantalla de Inicio</title>
     <link rel="stylesheet" href="inicio.css" />
+    <style>
+      .seccion-medica {
+        padding: 8px;
+        background: #7c3aad;
+        border-radius: 8px;
+      }
+
+      .seccion-titulo {
+        font-weight: bold;
+        font-size: 16px;
+        color: #ffffff;
+        margin-bottom: 2px;
+        padding: 10px;
+        padding-bottom: 8px;
+        background-color: #7c3aad;
+        border-radius: 6px;
+        border-bottom: none;
+      }
+
+      .seccion-contenido {
+        font-size: 14px;
+        line-height: 1.6;
+        color: #ffffff;
+        padding-left: 8px;
+        padding-top: 8px;
+        white-space: pre-wrap;
+      }
+
+      .message.received {
+        max-width: 80%;
+        padding: 15px;
+        background-color: #7c3aad;
+        border-radius: 12px;
+      }
+    </style>
   </head>
 
   <body>
@@ -195,18 +230,63 @@
       }
     });
 
-    /* Funcion pasada
-    function displayChatMessage(text, type) {
-      const messageElement = document.createElement("div");
-      messageElement.classList.add("message", type);
-      messageElement.textContent = text;
-      chatWindow.appendChild(messageElement);
-      chatWindow.scrollTop = chatWindow.scrollHeight;
-      return messageElement;
-    }
-      */
+    function formatearRespuestaMedica(texto, graficoUrl = null) {
+      // Palabras clave para detectar secciones
+      const secciones = [
+        { key: "diagnóstico", label: "Diagnóstico" },
+        { key: "gravedad", label: "Gravedad" },
+        { key: "explicación", label: "Explicación" },
+        { key: "recomendaciones médicas", label: "Recomendaciones Médicas" },
+      ];
 
-    function displayChatMessage(text, type, showLoadingGif = false) {
+      let textoHTML = "";
+      let restoTexto = texto;
+
+      secciones.forEach((seccion, index) => {
+        // Buscar la palabra clave (case insensitive)
+        const regex = new RegExp(
+          `(${seccion.key}[:\\s-]*)([\\s\\S]*?)(?=(${secciones
+            .map((s) => s.key)
+            .join("|")}[:\\s-])|$)`,
+          "i"
+        );
+        const match = restoTexto.match(regex);
+
+        if (match && match[2] && match[2].trim()) {
+          textoHTML += `
+        <div class="seccion-medica">
+          <div class="seccion-titulo">${seccion.label}</div>
+          <div class="seccion-contenido">${match[2].trim()}</div>
+      `;
+
+          // Si es la sección de Gravedad Y hay gráfico, agregarlo aquí
+          if (seccion.key === "gravedad" && graficoUrl) {
+            textoHTML += `
+          <img 
+            src="http://127.0.0.1:5000${graficoUrl}" 
+            alt="Gráfico de gravedad" 
+            style="max-width: 300px; margin-top: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: block;"
+          />
+        `;
+          }
+
+          textoHTML += `</div>`; // Cerrar seccion-medica
+
+          // Remover la sección ya procesada
+          restoTexto = restoTexto.replace(match[0], "");
+        }
+      });
+
+      // Si no se encontraron secciones, retornar el texto original
+      return textoHTML || texto;
+    }
+
+    function displayChatMessage(
+      text,
+      type,
+      showLoadingGif = false,
+      graficoUrl = null
+    ) {
       const messageElement = document.createElement("div");
       messageElement.classList.add("message", type);
 
@@ -222,7 +302,26 @@
       </div>
     `;
       } else {
-        messageElement.textContent = text;
+        // Si es una respuesta recibida (del médico), formatearla
+        if (type === "received") {
+          const textoFormateado = formatearRespuestaMedica(text, graficoUrl);
+          messageElement.innerHTML = textoFormateado;
+        } else {
+          messageElement.textContent = text;
+        }
+
+        // Agregar advertencia obligatoria al final (solo para mensajes recibidos)
+        if (type === "received" && !showLoadingGif) {
+          const advertenciaElement = document.createElement("div");
+          advertenciaElement.style.marginTop = "15px";
+          advertenciaElement.style.backgroundColor = "#7c3aad";
+          advertenciaElement.style.color = "#ffffff";
+          advertenciaElement.style.fontSize = "13px";
+          advertenciaElement.style.fontWeight = "bold";
+          advertenciaElement.innerHTML =
+            "⚠️ Advertencia obligatoria:<br>Este diagnóstico es orientativo. Se recomienda acudir a un médico general para una evaluación profesional";
+          messageElement.appendChild(advertenciaElement);
+        }
       }
 
       chatWindow.appendChild(messageElement);
@@ -233,6 +332,9 @@
     async function sendMessage() {
       const messageText = messageInput.value.trim();
       const userEmail = localStorage.getItem("currentUserEmail");
+
+      console.log("🔹 sendMessage ejecutada"); // DEBUG
+      console.log("📝 Texto:", messageText); // DEBUG
 
       // Validar que no esté vacío
       if (!messageText || messageText.length === 0) {
@@ -302,8 +404,13 @@
             );
           }
 
-          // Mostrar respuesta en el chat
-          displayChatMessage(data.respuesta, "received");
+          // Mostrar respuesta en el chat con gráfico si existe
+          displayChatMessage(
+            data.respuesta,
+            "received",
+            false,
+            data.grafico_url || null
+          );
         } else {
           showError("No se recibió respuesta del servidor");
         }
@@ -316,12 +423,24 @@
       }
     }
 
-    sendButton.addEventListener("click", sendMessage);
-    messageInput.addEventListener("keydown", (event) => {
+    // Event listeners
+    console.log("🔹 Registrando event listeners..."); // DEBUG
+
+    sendButton.addEventListener("click", function (e) {
+      console.log("🖱️ Click en botón detectado"); // DEBUG
+      e.preventDefault();
+      sendMessage();
+    });
+
+    messageInput.addEventListener("keydown", function (event) {
+      console.log("⌨️ Tecla presionada:", event.key); // DEBUG
       if (event.key === "Enter") {
         event.preventDefault();
+        console.log("✅ Enter detectado, ejecutando sendMessage"); // DEBUG
         sendMessage();
       }
     });
+
+    console.log("✅ Event listeners registrados correctamente"); // DEBUG
   </script>
 </html>
