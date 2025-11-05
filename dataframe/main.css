@@ -1,48 +1,60 @@
 body {
-    margin: 0 0 0 0;
-    background-color: #1e1e1e;
-}
-
-.header {
-    background-color: #3c096c;
-    height: 60px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 20px; 
-}
-
-button {
-    background-color: #3c096c;
-    color: #f3f3f3;
-    border-style: none;
-    font-family: Inter;
-    font-size: 18px;
-    font-weight: 600;
-}
-
-.logo {
-    height: 100px;
-    display: flex;
-    justify-content: left;
-    align-items: center;
-    
-}
-
-.logo-image {
-    height: 80px;
-    margin-top: 10px;
-    
-}
-
-
-.logo-title { 
-    height: 120px;
-    margin-left: -40px;
-    
-}
-
-.table-container {
+        margin: 0 0 0 0;
+        background-color: #1e1e1e;
+        font-family: "Inter", sans-serif;
+      }
+      .header {
+        background-color: #3c096c;
+        height: 60px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+      }
+      .header button {
+        background-color: #3c096c;
+        color: #f3f3f3;
+        border-style: none;
+        font-family: Inter;
+        font-size: 18px;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 10px 20px;
+        position: relative;
+        transition: all 0.3s ease;
+      }
+      .header button:hover {
+        opacity: 0.9;
+      }
+      .header button.active {
+        color: #ffffff;
+      }
+      .header button.active::after {
+        content: "";
+        position: absolute;
+        bottom: -10px;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background-color: white;
+        border-radius: 2px;
+      }
+      .logo {
+        height: 100px;
+        display: flex;
+        justify-content: left;
+        align-items: center;
+      }
+      .logo-image {
+        height: 80px;
+        margin-top: 10px;
+      }
+      .logo-title {
+        height: 120px;
+        margin-left: -40px;
+      }
+      .table-container {
         max-height: 600px;
         overflow-y: auto;
         margin: 20px;
@@ -50,23 +62,19 @@ button {
         border-radius: 8px;
         display: none;
       }
-
       .table-container.active {
         display: block;
       }
-
       .data-table {
         width: 100%;
         border-collapse: collapse;
         background-color: white;
       }
-
       .data-table thead {
         position: sticky;
         top: 0;
         z-index: 10;
       }
-
       .data-table thead th {
         background-color: #501669;
         color: white;
@@ -76,39 +84,31 @@ button {
         border-bottom: 2px solid #45135b;
         font-size: 14px;
       }
-
       .data-table tbody td {
         padding: 12px 15px;
         border-bottom: 1px solid #f3f3f3;
         font-size: 13px;
+        color: #333;
       }
-
       .data-table tbody tr:hover {
         background-color: #f8f9fa;
       }
-
       .data-table tbody tr:nth-child(even) {
-        background-color: #b5b5b5;
+        background-color: #f0f0f0;
       }
-
       .table-container::-webkit-scrollbar {
         width: 8px;
       }
-
       .table-container::-webkit-scrollbar-track {
         background: #f1f1f1;
       }
-
       .table-container::-webkit-scrollbar-thumb {
         background: #888;
         border-radius: 4px;
       }
-
       .table-container::-webkit-scrollbar-thumb:hover {
         background: #555;
       }
-
-
       .modal {
         display: none;
         position: fixed;
@@ -119,13 +119,11 @@ button {
         height: 100%;
         background-color: rgba(0, 0, 0, 0.5);
       }
-
       .modal.active {
         display: flex;
         justify-content: center;
         align-items: center;
       }
-
       .modal-content {
         background-color: #501669;
         padding: 30px;
@@ -137,22 +135,19 @@ button {
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
         position: relative;
       }
-
       .modal-header {
         display: flex;
         justify-content: right;
         align-items: center;
         padding-bottom: 0px;
       }
-
       .modal-header h2 {
         margin: 0;
         color: #2c3e50;
       }
-
       .modal-close {
         background-color: #501669;
-        color: #000000;
+        color: #ffffff;
         border: none;
         padding: 8px 15px;
         border-radius: 4px;
@@ -160,16 +155,16 @@ button {
         font-size: 14px;
         font-weight: 600;
       }
-
-
+      .modal-close:hover {
+        color: #f0f0f0;
+      }
       .modal-body {
         color: white;
         line-height: 1.6;
         white-space: pre-wrap;
         font-family: Inter;
       }
-
-td span:hover {
-  color: #404040;
-  text-decoration: underline;
-}
+      td span:hover {
+        color: #404040;
+        text-decoration: underline;
+      }

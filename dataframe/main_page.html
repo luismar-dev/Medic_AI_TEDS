@@ -30,7 +30,7 @@
       />
     </div>
 
-    <div class="table-container" id="tablaDiagnosticos">
+    <div class="table-container" id="tablaContainer">
       <table class="data-table">
         <thead>
           <tr id="tableHeader"></tr>
@@ -39,7 +39,6 @@
       </table>
     </div>
 
-    <!-- Modal para mostrar síntomas -->
     <div class="modal" id="modalSintomas">
       <div class="modal-content">
         <div class="modal-header">
@@ -62,8 +61,27 @@
       </div>
     </div>
 
+    <!-- Cargamos data.js primero -->
     <script src="data.js"></script>
+
     <script>
+      // Guardamos 'tableData' (de data.js) en una variable única.
+      const diagnosticosTableData = [...tableData];
+    </script>
+
+    <!-- Cargamos resp.js después -->
+    <script src="resp.js"></script>
+
+    <script>
+      // Ahora capturamos los datos de resp.js en una variable NUEVA
+      // Asumiendo que resp.js usa la variable 'respTableData'
+      const resultadosTableData = [...respTableData];
+    </script>
+
+    <script>
+      // Variable para rastrear qué tabla está activa
+      let currentTableData = null; // 'diagnosticos' o 'resultados'
+
       function mostrarSintomas(sintomas) {
         const modal = document.getElementById("modalSintomas");
         const modalBody = document.getElementById("modalBody");
@@ -76,7 +94,6 @@
         modal.classList.remove("active");
       }
 
-      // Cerrar modal al hacer clic fuera
       document
         .getElementById("modalSintomas")
         .addEventListener("click", function (e) {
@@ -92,21 +109,23 @@
         const body = document.getElementById("tableBody");
         const columnas = Object.keys(data[0]);
 
+        header.innerHTML = "";
+        body.innerHTML = "";
+
         header.innerHTML = columnas.map((col) => `<th>${col}</th>`).join("");
 
         body.innerHTML = data
           .map((row, index) => {
             const celdas = columnas
               .map((col) => {
-                // Si la columna es 'Sintomas', mostrar texto con ícono
                 if (col === "Sintomas") {
                   return `<td style="text-align: center; cursor: pointer;" onclick="mostrarSintomas(\`${
                     row[col]?.replace(/`/g, "\\`") || ""
                   }\`)">
-        <span style="display: inline-flex; align-items: center; gap: 8px; color: #000000; white-space: nowrap;">
-          Ver Síntomas<span style="font-size: 12px;">▼</span>
-        </span>
-      </td>`;
+      <span style="display: inline-flex; align-items: center; gap: 8px; color: #000000; white-space: nowrap;">
+        Ver Síntomas<span style="font-size: 12px;">▼</span>
+      </span>
+    </td>`;
                 }
                 return `<td>${row[col] !== null ? row[col] : "—"}</td>`;
               })
@@ -116,22 +135,61 @@
           .join("");
       }
 
+      // Función para actualizar el estado activo de los botones
+      function actualizarBotonActivo(botonActivo) {
+        // Remover la clase active de todos los botones
+        document.querySelectorAll(".header button").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+
+        // Agregar la clase active al botón seleccionado
+        if (botonActivo) {
+          botonActivo.classList.add("active");
+        }
+      }
+
+      // Lógica para el botón de Diagnósticos
       document
         .getElementById("btnDiagnosticos")
         .addEventListener("click", function () {
-          const tabla = document.getElementById("tablaDiagnosticos");
-          if (tabla.classList.contains("active")) {
+          const tabla = document.getElementById("tablaContainer");
+
+          if (
+            tabla.classList.contains("active") &&
+            currentTableData === "diagnosticos"
+          ) {
             tabla.classList.remove("active");
+            currentTableData = null;
+            actualizarBotonActivo(null);
           } else {
+            // Usa la variable 'diagnosticosTableData'
+            cargarTabla(diagnosticosTableData);
             tabla.classList.add("active");
-            cargarTabla(tableData);
+            currentTableData = "diagnosticos";
+            actualizarBotonActivo(this);
           }
         });
 
+      // Lógica para el botón de Resultados
       document
         .getElementById("btnResultados")
         .addEventListener("click", function () {
-          alert("Tabla de resultados - próximamente");
+          const tabla = document.getElementById("tablaContainer");
+
+          if (
+            tabla.classList.contains("active") &&
+            currentTableData === "resultados"
+          ) {
+            tabla.classList.remove("active");
+            currentTableData = null;
+            actualizarBotonActivo(null);
+          } else {
+            // Usa la variable 'resultadosTableData' (que ahora viene de resp.js)
+            cargarTabla(resultadosTableData);
+            tabla.classList.add("active");
+            currentTableData = "resultados";
+            actualizarBotonActivo(this);
+          }
         });
 
       // Cerrar modal con tecla ESC
