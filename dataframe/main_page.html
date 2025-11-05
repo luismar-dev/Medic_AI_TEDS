@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IA Medical Analysis</title>
+    <link rel="stylesheet" href="main.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Merriweather:ital,opsz,wght@0,18..144,300..900;1,18..144,300..900&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="header">
+      <button id="btnDiagnosticos">Tabla de diagnosticos</button>
+      <button id="btnResultados">Tabla de resultados</button>
+    </div>
+    <div class="logo">
+      <img
+        class="logo-image"
+        src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/33f7acfffc898e8fcd58ca74b699b1d5f4a64c28/project/logo_Medic_AI.png"
+        alt="Ícono de salud"
+      />
+      <img
+        class="logo-title"
+        src="https://raw.githubusercontent.com/luismar-dev/Medic_AI_TEDS/33f7acfffc898e8fcd58ca74b699b1d5f4a64c28/project/nombre_Medic_AI.png"
+        alt="Medic-AI"
+      />
+    </div>
+
+    <div class="table-container" id="tablaDiagnosticos">
+      <table class="data-table">
+        <thead>
+          <tr id="tableHeader"></tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <!-- Modal para mostrar síntomas -->
+    <div class="modal" id="modalSintomas">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button class="modal-close" onclick="cerrarModal()">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              fill="currentColor"
+              class="bi bi-x"
+              viewBox="0 0 16 16"
+            >
+              <path
+                d="M4.646 4.646a.5.5 0 0 1 .708 0L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 0 1 0-.708"
+              />
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body" id="modalBody"></div>
+      </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script>
+      function mostrarSintomas(sintomas) {
+        const modal = document.getElementById("modalSintomas");
+        const modalBody = document.getElementById("modalBody");
+        modalBody.textContent = sintomas || "No hay síntomas registrados";
+        modal.classList.add("active");
+      }
+
+      function cerrarModal() {
+        const modal = document.getElementById("modalSintomas");
+        modal.classList.remove("active");
+      }
+
+      // Cerrar modal al hacer clic fuera
+      document
+        .getElementById("modalSintomas")
+        .addEventListener("click", function (e) {
+          if (e.target === this) {
+            cerrarModal();
+          }
+        });
+
+      function cargarTabla(data) {
+        if (!data || data.length === 0) return;
+
+        const header = document.getElementById("tableHeader");
+        const body = document.getElementById("tableBody");
+        const columnas = Object.keys(data[0]);
+
+        header.innerHTML = columnas.map((col) => `<th>${col}</th>`).join("");
+
+        body.innerHTML = data
+          .map((row, index) => {
+            const celdas = columnas
+              .map((col) => {
+                // Si la columna es 'Sintomas', mostrar texto con ícono
+                if (col === "Sintomas") {
+                  return `<td style="text-align: center; cursor: pointer;" onclick="mostrarSintomas(\`${
+                    row[col]?.replace(/`/g, "\\`") || ""
+                  }\`)">
+        <span style="display: inline-flex; align-items: center; gap: 8px; color: #000000; white-space: nowrap;">
+          Ver Síntomas<span style="font-size: 12px;">▼</span>
+        </span>
+      </td>`;
+                }
+                return `<td>${row[col] !== null ? row[col] : "—"}</td>`;
+              })
+              .join("");
+            return `<tr>${celdas}</tr>`;
+          })
+          .join("");
+      }
+
+      document
+        .getElementById("btnDiagnosticos")
+        .addEventListener("click", function () {
+          const tabla = document.getElementById("tablaDiagnosticos");
+          if (tabla.classList.contains("active")) {
+            tabla.classList.remove("active");
+          } else {
+            tabla.classList.add("active");
+            cargarTabla(tableData);
+          }
+        });
+
+      document
+        .getElementById("btnResultados")
+        .addEventListener("click", function () {
+          alert("Tabla de resultados - próximamente");
+        });
+
+      // Cerrar modal con tecla ESC
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape") {
+          cerrarModal();
+        }
+      });
+    </script>
+  </body>
+</html>
