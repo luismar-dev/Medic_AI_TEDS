@@ -1,10 +1,19 @@
 body {
         margin: 0 0 0 0;
-        background-color: #1e1e1e;
+        background-color: #F6F4F9;
         font-family: "Inter", sans-serif;
       }
+
+      .header-logo {
+        background-color: #8E24AA;
+        height: 60px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        position: relative;
+      }
       .header {
-        background-color: #3c096c;
+        background-color: #B39DDB;
         height: 60px;
         display: flex;
         justify-content: center;
@@ -13,8 +22,8 @@ body {
         position: relative;
       }
       .header button {
-        background-color: #3c096c;
-        color: #f3f3f3;
+        background-color: #B39DDB;
+        color: #FFFFFF;
         border-style: none;
         font-family: Inter;
         font-size: 18px;
@@ -76,34 +85,34 @@ body {
         z-index: 10;
       }
       .data-table thead th {
-        background-color: #501669;
-        color: white;
+        background-color: #6A1B9A;
+        color: #F3F3F3;
         padding: 15px;
         text-align: left;
         font-weight: 600;
-        border-bottom: 2px solid #45135b;
+        border-bottom: 2px solid #6A1B9A;
         font-size: 14px;
       }
       .data-table tbody td {
         padding: 12px 15px;
         border-bottom: 1px solid #f3f3f3;
         font-size: 13px;
-        color: #333;
+        color: #000000;
       }
       .data-table tbody tr:hover {
-        background-color: #f8f9fa;
+        background-color: #f9f8fa;
       }
       .data-table tbody tr:nth-child(even) {
-        background-color: #f0f0f0;
+        background-color: #F9F6FB;
       }
       .table-container::-webkit-scrollbar {
         width: 8px;
       }
       .table-container::-webkit-scrollbar-track {
-        background: #f1f1f1;
+        background: #F3E5F5;
       }
       .table-container::-webkit-scrollbar-thumb {
-        background: #888;
+        background: #8E24AA;
         border-radius: 4px;
       }
       .table-container::-webkit-scrollbar-thumb:hover {
@@ -125,7 +134,7 @@ body {
         align-items: center;
       }
       .modal-content {
-        background-color: #501669;
+        background-color: #F3E5F5;
         padding: 30px;
         padding-top: 10px;
         border-radius: 8px;
@@ -146,7 +155,7 @@ body {
         color: #2c3e50;
       }
       .modal-close {
-        background-color: #501669;
+        background-color: #F3E5F5;
         color: #ffffff;
         border: none;
         padding: 8px 15px;
@@ -159,7 +168,7 @@ body {
         color: #f0f0f0;
       }
       .modal-body {
-        color: white;
+        color: #4A148C;
         line-height: 1.6;
         white-space: pre-wrap;
         font-family: Inter;
