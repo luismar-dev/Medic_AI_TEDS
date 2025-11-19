@@ -31,6 +31,32 @@
       <div class="header">
         <button id="btnDiagnosticos">Tabla de diagnosticos</button>
         <button id="btnResultados">Tabla de resultados</button>
+        <button id="btnGraficas">Graficas</button>
+        <button id="btnCalculos">Cálculos</button>
+      </div>
+
+      <!-- Submenú de Diagnósticos -->
+      <div class="submenu" id="diagnosticosSubmenu">
+        <button id="btnConHistorialDiag">Con Historial</button>
+        <button id="btnSinHistorialDiag">Sin Historial</button>
+      </div>
+
+      <!-- Submenú de Resultados -->
+      <div class="submenu" id="resultadosSubmenu">
+        <button id="btnConHistorialRes">Con Historial</button>
+        <button id="btnSinHistorialRes">Sin Historial</button>
+      </div>
+
+      <!-- Submenú de Gráficas -->
+      <div class="submenu" id="graficasSubmenu">
+        <button id="btnConHistorial">Con Historial</button>
+        <button id="btnSinHistorial">Sin Historial</button>
+      </div>
+
+      <!-- Submenú de Cálculos -->
+      <div class="submenu" id="calculosSubmenu">
+        <button id="btnConHistorialCalc">Con Historial</button>
+        <button id="btnSinHistorialCalc">Sin Historial</button>
       </div>
     </div>
 
@@ -41,6 +67,80 @@
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
+    </div>
+
+    <!-- Contenedor de Gráficas Sin Historial-->
+    <div class="graphics-container" id="graphicsContainerSH">
+      <div class="graphic-item">
+        <img src="GSH_1.svg" alt="Gráfica 1" id="grafica1" />
+      </div>
+      <div class="graphic-item">
+        <img src="GSH_2.svg" alt="Gráfica 2" id="grafica2" />
+      </div>
+      <div class="graphic-item">
+        <img src="GSH_3.svg" alt="Gráfica 3" id="grafica3" />
+      </div>
+      <div class="graphic-item">
+        <img src="GSH_4.svg" alt="Gráfica 4" id="grafica4" />
+      </div>
+      <div class="graphic-item">
+        <img src="GSH_5.svg" alt="Gráfica 5" id="grafica5" />
+      </div>
+    </div>
+
+    <!-- Contenedor de Gráficas Con Historial-->
+    <div class="graphics-container" id="graphicsContainerCH">
+      <div class="graphic-item">
+        <img src="GCH_1.svg" alt="Gráfica 1" id="grafica1" />
+      </div>
+      <div class="graphic-item">
+        <img src="GCH_2.svg" alt="Gráfica 2" id="grafica2" />
+      </div>
+      <div class="graphic-item">
+        <img src="GCH_3.svg" alt="Gráfica 3" id="grafica3" />
+      </div>
+      <div class="graphic-item">
+        <img src="GCH_4.svg" alt="Gráfica 4" id="grafica4" />
+      </div>
+      <div class="graphic-item">
+        <img src="GCH_5.svg" alt="Gráfica 5" id="grafica5" />
+      </div>
+    </div>
+
+    <!-- Contenedor de Calculos Sin Historial-->
+    <div class="graphics-container" id="calcContainerSH">
+      <div class="graphic-item">
+        <h3>Tabla de Métricas de Desempeño General por IA</h3>
+        <img src="CSH_1.svg" alt="Calculo 1" id="calculo1" />
+      </div>
+      <div class="graphic-item">
+        <h3>Tabla de Distribución de Tipos de Error por IA</h3>
+        <img src="CSH_2.svg" alt="Calculo 2" id="calculo2" />
+      </div>
+      <div class="graphic-item">
+        <h3>
+          Tabla de Desempeño por Tipo de Infección Respiratoria Aguda (IRA)
+        </h3>
+        <img src="CSH_3.svg" alt="Calculo 3" id="calculo3" />
+      </div>
+    </div>
+
+    <!-- Contenedor de Calculos Con Historial-->
+    <div class="graphics-container" id="calcContainerCH">
+      <div class="graphic-item">
+        <h3>Tabla de Métricas de Desempeño General por IA</h3>
+        <img src="CCH_1.svg" alt="Calculo 1" id="calculo1" />
+      </div>
+      <div class="graphic-item">
+        <h3>Tabla de Distribución de Tipos de Error por IA</h3>
+        <img src="CCH_2.svg" alt="Calculo 2" id="calculo2" />
+      </div>
+      <div class="graphic-item">
+        <h3>
+          Tabla de Desempeño por Tipo de Infección Respiratoria Aguda (IRA)
+        </h3>
+        <img src="CCH_3.svg" alt="Calculo 3" id="calculo3" />
+      </div>
     </div>
 
     <div class="modal" id="modalSintomas">
@@ -65,26 +165,41 @@
       </div>
     </div>
 
-    <!-- Cargamos data.js primero -->
-    <script src="data.js"></script>
+    <!-- Cargamos dataCH.js primero -->
+    <script src="dataCH.js"></script>
 
     <script>
-      // Guardamos 'tableData' (de data.js) en una variable única.
-      const diagnosticosTableData = [...tableData];
+      // Guardamos 'tableDataCH' (de dataCH.js) en una variable única.
+      const diagnosticosTableDataCH = [...tableDataCH];
+    </script>
+
+    <!-- Cargamos dataSH.js primero -->
+    <script src="dataSH.js"></script>
+
+    <script>
+      // Guardamos 'tableDataSH' (de dataSH.js) en una variable única.
+      const diagnosticosTableDataSH = [...tableDataSH];
     </script>
 
     <!-- Cargamos resp.js después -->
-    <script src="resp.js"></script>
+    <script src="respCH.js"></script>
 
     <script>
       // Ahora capturamos los datos de resp.js en una variable NUEVA
-      // Asumiendo que resp.js usa la variable 'respTableData'
-      const resultadosTableData = [...respTableData];
+      const resultadosTableDataCH = [...respTableDataCH];
+    </script>
+
+    <!-- Cargamos respSH.js después -->
+    <script src="respSH.js"></script>
+
+    <script>
+      // Ahora capturamos los datos de respSH.js en una variable NUEVA
+      const resultadosTableDataSH = [...respTableDataSH];
     </script>
 
     <script>
       // Variable para rastrear qué tabla está activa
-      let currentTableData = null; // 'diagnosticos' o 'resultados'
+      let currentTableData = null;
 
       function mostrarSintomas(sintomas) {
         const modal = document.getElementById("modalSintomas");
@@ -139,61 +254,259 @@
           .join("");
       }
 
-      // Función para actualizar el estado activo de los botones
       function actualizarBotonActivo(botonActivo) {
-        // Remover la clase active de todos los botones
         document.querySelectorAll(".header button").forEach((btn) => {
           btn.classList.remove("active");
         });
 
-        // Agregar la clase active al botón seleccionado
         if (botonActivo) {
           botonActivo.classList.add("active");
         }
+      }
+
+      function actualizarBotonSubmenuActivo(botonActivo) {
+        document.querySelectorAll(".submenu button").forEach((btn) => {
+          btn.classList.remove("active");
+        });
+
+        if (botonActivo) {
+          botonActivo.classList.add("active");
+        }
+      }
+
+      function ocultarTodo() {
+        document.getElementById("tablaContainer").classList.remove("active");
+        document
+          .getElementById("graphicsContainerSH")
+          .classList.remove("active");
+        document
+          .getElementById("graphicsContainerCH")
+          .classList.remove("active");
+        document.getElementById("calcContainerSH").classList.remove("active");
+        document.getElementById("calcContainerCH").classList.remove("active");
       }
 
       // Lógica para el botón de Diagnósticos
       document
         .getElementById("btnDiagnosticos")
         .addEventListener("click", function () {
-          const tabla = document.getElementById("tablaContainer");
+          const submenu = document.getElementById("diagnosticosSubmenu");
+          const submenuResultados =
+            document.getElementById("resultadosSubmenu");
+          const submenuGraficas = document.getElementById("graficasSubmenu");
+          const submenuCalculos = document.getElementById("calculosSubmenu");
 
-          if (
-            tabla.classList.contains("active") &&
-            currentTableData === "diagnosticos"
-          ) {
-            tabla.classList.remove("active");
-            currentTableData = null;
+          // Ocultar otros submenús
+          submenuResultados.classList.remove("active");
+          submenuGraficas.classList.remove("active");
+          submenuCalculos.classList.remove("active");
+          actualizarBotonSubmenuActivo(null);
+          ocultarTodo();
+
+          if (submenu.classList.contains("active")) {
+            submenu.classList.remove("active");
             actualizarBotonActivo(null);
           } else {
-            // Usa la variable 'diagnosticosTableData'
-            cargarTabla(diagnosticosTableData);
-            tabla.classList.add("active");
-            currentTableData = "diagnosticos";
+            submenu.classList.add("active");
             actualizarBotonActivo(this);
           }
+        });
+
+      // Botón Con Historial (Diagnósticos)
+      document
+        .getElementById("btnConHistorialDiag")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const tabla = document.getElementById("tablaContainer");
+          cargarTabla(diagnosticosTableDataCH);
+          tabla.classList.add("active");
+          currentTableData = "diagnosticos";
+
+          console.log("Mostrando diagnósticos CON historial");
+        });
+
+      // Botón Sin Historial (Diagnósticos)
+      document
+        .getElementById("btnSinHistorialDiag")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const tabla = document.getElementById("tablaContainer");
+          cargarTabla(diagnosticosTableDataSH);
+          tabla.classList.add("active");
+          currentTableData = "diagnosticos";
+
+          console.log("Mostrando diagnósticos SIN historial");
         });
 
       // Lógica para el botón de Resultados
       document
         .getElementById("btnResultados")
         .addEventListener("click", function () {
-          const tabla = document.getElementById("tablaContainer");
+          const submenu = document.getElementById("resultadosSubmenu");
+          const submenuDiagnosticos = document.getElementById(
+            "diagnosticosSubmenu"
+          );
+          const submenuGraficas = document.getElementById("graficasSubmenu");
+          const submenuCalculos = document.getElementById("calculosSubmenu");
 
-          if (
-            tabla.classList.contains("active") &&
-            currentTableData === "resultados"
-          ) {
-            tabla.classList.remove("active");
-            currentTableData = null;
+          // Ocultar otros submenús
+          submenuDiagnosticos.classList.remove("active");
+          submenuGraficas.classList.remove("active");
+          submenuCalculos.classList.remove("active");
+          actualizarBotonSubmenuActivo(null);
+          ocultarTodo();
+
+          if (submenu.classList.contains("active")) {
+            submenu.classList.remove("active");
             actualizarBotonActivo(null);
           } else {
-            // Usa la variable 'resultadosTableData' (que ahora viene de resp.js)
-            cargarTabla(resultadosTableData);
-            tabla.classList.add("active");
-            currentTableData = "resultados";
+            submenu.classList.add("active");
             actualizarBotonActivo(this);
           }
+        });
+
+      // Botón Con Historial (Resultados)
+      document
+        .getElementById("btnConHistorialRes")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const tabla = document.getElementById("tablaContainer");
+          cargarTabla(resultadosTableDataCH);
+          tabla.classList.add("active");
+          currentTableData = "resultados";
+
+          console.log("Mostrando resultados CON historial");
+        });
+
+      // Botón Sin Historial (Resultados)
+      document
+        .getElementById("btnSinHistorialRes")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const tabla = document.getElementById("tablaContainer");
+          cargarTabla(resultadosTableDataSH);
+          tabla.classList.add("active");
+          currentTableData = "resultados";
+
+          console.log("Mostrando resultados SIN historial");
+        });
+
+      // Lógica para el botón de Gráficas
+      document
+        .getElementById("btnGraficas")
+        .addEventListener("click", function () {
+          const submenu = document.getElementById("graficasSubmenu");
+          const submenuDiagnosticos = document.getElementById(
+            "diagnosticosSubmenu"
+          );
+          const submenuResultados =
+            document.getElementById("resultadosSubmenu");
+          const submenuCalculos = document.getElementById("calculosSubmenu");
+
+          ocultarTodo();
+          submenuDiagnosticos.classList.remove("active");
+          submenuResultados.classList.remove("active");
+          submenuCalculos.classList.remove("active");
+
+          if (submenu.classList.contains("active")) {
+            submenu.classList.remove("active");
+            actualizarBotonActivo(null);
+            actualizarBotonSubmenuActivo(null);
+          } else {
+            submenu.classList.add("active");
+            actualizarBotonActivo(this);
+          }
+        });
+
+      // Botón Con Historial (Gráficas)
+      document
+        .getElementById("btnConHistorial")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const graphicsContainerCH = document.getElementById(
+            "graphicsContainerCH"
+          );
+          graphicsContainerCH.classList.add("active");
+
+          console.log("Mostrando gráficas CON historial");
+        });
+
+      // Botón Sin Historial (Gráficas)
+      document
+        .getElementById("btnSinHistorial")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const graphicsContainerSH = document.getElementById(
+            "graphicsContainerSH"
+          );
+          graphicsContainerSH.classList.add("active");
+
+          console.log("Mostrando gráficas SIN historial");
+        });
+
+      // Lógica para el botón de Cálculos
+      document
+        .getElementById("btnCalculos")
+        .addEventListener("click", function () {
+          const submenu = document.getElementById("calculosSubmenu");
+          const submenuDiagnosticos = document.getElementById(
+            "diagnosticosSubmenu"
+          );
+          const submenuResultados =
+            document.getElementById("resultadosSubmenu");
+          const submenuGraficas = document.getElementById("graficasSubmenu");
+
+          ocultarTodo();
+          submenuDiagnosticos.classList.remove("active");
+          submenuResultados.classList.remove("active");
+          submenuGraficas.classList.remove("active");
+
+          if (submenu.classList.contains("active")) {
+            submenu.classList.remove("active");
+            actualizarBotonActivo(null);
+            actualizarBotonSubmenuActivo(null);
+          } else {
+            submenu.classList.add("active");
+            actualizarBotonActivo(this);
+          }
+        });
+
+      // Botón Con Historial (Cálculos)
+      document
+        .getElementById("btnConHistorialCalc")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const calcContainerCH = document.getElementById("calcContainerCH");
+          calcContainerCH.classList.add("active");
+
+          console.log("Mostrando calculos CON historial");
+        });
+
+      // Botón Sin Historial (Cálculos)
+      document
+        .getElementById("btnSinHistorialCalc")
+        .addEventListener("click", function () {
+          actualizarBotonSubmenuActivo(this);
+          ocultarTodo();
+
+          const calcContainerSH = document.getElementById("calcContainerSH");
+          calcContainerSH.classList.add("active");
+
+          console.log("Mostrando calculos SIN historial");
         });
 
       // Cerrar modal con tecla ESC

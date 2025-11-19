@@ -177,3 +177,77 @@ body {
         color: #404040;
         text-decoration: underline;
       }
+
+      /* Estilos para los botones secundarios de Gráficas y Cálculos */
+      .submenu {
+        background-color: #F6F4F9;
+        height: 60px;
+        display: none;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+      }
+
+      .submenu.active {
+        display: flex;
+      }
+
+      .submenu button {
+        background-color: #8E24AA;
+        color: #FFFFFF;
+        border: none;
+        font-family: Inter;
+        font-size: 16px;
+        font-weight: 500;
+        cursor: pointer;
+        padding: 10px 30px;
+        border-radius: 20px;
+        transition: all 0.3s ease;
+      }
+
+      .submenu button:hover {
+        background-color: #7B1FA2;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      .submenu button.active {
+        background-color: #6A1B9A;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .graphics-container {
+        display: none;
+        padding: 20px;
+        max-width: 1200px;
+        margin: 0 auto;
+        overflow-y: auto;
+        max-height: calc(100vh - 200px);
+      }
+
+      .graphics-container.active {
+        display: block;
+      }
+
+      .graphic-item {
+        margin-bottom: 30px;
+        text-align: center;
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+
+      .graphic-item img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+      }
+
+      .graphic-item h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #333;
+        font-size: 1.2em;
+      }
